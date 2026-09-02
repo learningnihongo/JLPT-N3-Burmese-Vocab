@@ -1,11 +1,13 @@
 package com.example.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +23,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -43,6 +47,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -61,7 +66,10 @@ import com.example.ui.screens.ProfileScreen
 import com.example.ui.screens.QuizScreen
 import com.example.ui.screens.StatisticsScreen
 import com.example.ui.screens.VocabBrowseScreen
+import com.example.ui.theme.IconThemeStyle
 import com.example.ui.theme.JapaneseCrimson
+import com.example.ui.theme.KanjiKotobaTheme
+import com.example.ui.theme.ThemeMode
 import com.example.ui.viewmodel.QuizViewModel
 import com.example.ui.viewmodel.VocabFilterType
 import com.example.ui.viewmodel.VocabViewModel
@@ -72,292 +80,283 @@ fun MainApp(
     vocabViewModel: VocabViewModel = viewModel(),
     quizViewModel: QuizViewModel = viewModel()
 ) {
-    val navController = rememberNavController()
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route ?: Screen.Home.route
+    val themeSettings by vocabViewModel.themeSettings.collectAsState()
 
-    var showAddCustomDialog by remember { mutableStateOf(false) }
+    KanjiKotobaTheme(themeSettings = themeSettings) {
+        val navController = rememberNavController()
+        val navBackStackEntry by navController.currentBackStackEntryAsState()
+        val currentRoute = navBackStackEntry?.destination?.route ?: Screen.Home.route
 
-    val bottomNavItems = listOf(
-        Screen.Home,
-        Screen.Browse,
-        Screen.Stats,
-        Screen.Quiz,
-        Screen.Profile
-    )
+        var showAddCustomDialog by remember { mutableStateOf(false) }
 
-    val isFullScreenStudy = currentRoute == Screen.Study.route
+        val bottomNavItems = listOf(
+            Screen.Home,
+            Screen.Browse,
+            Screen.Stats,
+            Screen.Quiz,
+            Screen.Profile
+        )
 
-    Scaffold(
-        topBar = {
-            if (!isFullScreenStudy) {
-                val profile by vocabViewModel.userProfile.collectAsState()
-                Surface(
-                    color = MaterialTheme.colorScheme.background,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+        val isFullScreenStudy = currentRoute == Screen.Study.route
+        val systemIsDark = isSystemInDarkTheme()
+        val isCurrentlyDark = when (themeSettings.themeMode) {
+            ThemeMode.SYSTEM -> systemIsDark
+            ThemeMode.LIGHT -> false
+            ThemeMode.DARK -> true
+        }
+
+        Scaffold(
+            topBar = {
+                if (!isFullScreenStudy) {
+                    val profile by vocabViewModel.userProfile.collectAsState()
+                    Surface(
+                        color = MaterialTheme.colorScheme.background,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        // Left: Avatar + Title/Level
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(androidx.compose.foundation.shape.CircleShape)
-                                    .background(MaterialTheme.colorScheme.primaryContainer),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = profile?.name?.take(2)?.uppercase() ?: "KK",
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp
-                                )
-                            }
-                            Column {
+                            // Left: Clean Title & JLPT Level
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text(
                                     text = when (currentRoute) {
-                                        Screen.Home.route -> "KotoKanji"
-                                        Screen.Browse.route -> "JLPT N3 Library"
-                                        Screen.Stats.route -> "Learning Statistics"
+                                        Screen.Home.route -> "KotoKanji こと漢字"
+                                        Screen.Browse.route -> "N3 Word Library"
+                                        Screen.Stats.route -> "Statistics"
                                         Screen.Quiz.route -> "Quiz Arena"
-                                        Screen.Profile.route -> "Student Profile"
+                                        Screen.Profile.route -> "Profile"
                                         else -> "KotoKanji"
                                     },
-                                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
-                                    fontWeight = FontWeight.SemiBold,
+                                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
+                                    fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = "Level: ${profile?.targetJlptLevel ?: "Intermediate"}",
-                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    text = "JLPT N3 Myanmar • Offline Study",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                                    color = MaterialTheme.colorScheme.outline
                                 )
                             }
-                        }
 
-                        // Right: Streak Badge & Add Button
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            // Offline & Streak Pill
-                            Surface(
-                                shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
-                                color = MaterialTheme.colorScheme.surfaceVariant,
-                                border = androidx.compose.foundation.BorderStroke(
-                                    1.dp,
-                                    MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
-                                )
+                            // Right: Theme Mode Quick Toggle & Add Button
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    Text(
-                                        text = "🔥 ${profile?.currentStreak ?: 1}",
-                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                                        fontWeight = FontWeight.Bold,
-                                        color = com.example.ui.theme.StreakOrange
-                                    )
-                                    Box(
-                                        modifier = Modifier
-                                            .width(1.dp)
-                                            .height(10.dp)
-                                            .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
-                                    )
-                                    Text(
-                                        text = "Offline",
-                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-
-                            if (currentRoute == Screen.Home.route || currentRoute == Screen.Browse.route) {
+                                // Quick Dark / Light Mode Toggle Button
                                 IconButton(
-                                    onClick = { showAddCustomDialog = true },
+                                    onClick = {
+                                        vocabViewModel.toggleDarkMode(isCurrentlyDark)
+                                    },
                                     modifier = Modifier
-                                        .size(36.dp)
-                                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f), androidx.compose.foundation.shape.CircleShape)
-                                        .testTag("app_bar_add_btn")
+                                        .size(38.dp)
+                                        .background(
+                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                            CircleShape
+                                        )
+                                        .testTag("app_bar_dark_mode_toggle_btn")
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Add,
-                                        contentDescription = "Add Personalized Card",
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.size(20.dp)
-                                    )
+                                    Crossfade(targetState = isCurrentlyDark, label = "theme_icon_crossfade") { dark ->
+                                        Icon(
+                                            imageVector = if (dark) Icons.Default.LightMode else Icons.Default.DarkMode,
+                                            contentDescription = if (dark) "Switch to Light Mode" else "Switch to Dark Mode",
+                                            tint = if (dark) Color(0xFFFFD54F) else MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+
+                                if (currentRoute == Screen.Home.route || currentRoute == Screen.Browse.route) {
+                                    IconButton(
+                                        onClick = { showAddCustomDialog = true },
+                                        modifier = Modifier
+                                            .size(38.dp)
+                                            .background(
+                                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                                                CircleShape
+                                            )
+                                            .testTag("app_bar_add_btn")
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Add,
+                                            contentDescription = "Add Card",
+                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
-        },
-        bottomBar = {
-            AnimatedVisibility(
-                visible = !isFullScreenStudy,
-                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
-            ) {
-                Surface(
-                    border = androidx.compose.foundation.BorderStroke(
-                        1.dp,
-                        MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
-                    ),
-                    color = MaterialTheme.colorScheme.surfaceVariant
+            },
+            bottomBar = {
+                AnimatedVisibility(
+                    visible = !isFullScreenStudy,
+                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
                 ) {
-                    NavigationBar(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        tonalElevation = 0.dp,
-                        modifier = Modifier.testTag("main_bottom_nav")
+                    Surface(
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
+                        ),
+                        color = MaterialTheme.colorScheme.surface
                     ) {
-                        bottomNavItems.forEach { screen ->
-                            val selected = currentRoute == screen.route
-                            NavigationBarItem(
-                                icon = {
-                                    Icon(
-                                        imageVector = if (selected) screen.selectedIcon else screen.unselectedIcon,
-                                        contentDescription = screen.title
-                                    )
-                                },
-                                label = {
-                                    Text(
-                                        screen.title,
-                                        fontSize = 11.sp,
-                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
-                                    )
-                                },
-                                selected = selected,
-                                onClick = {
-                                    if (currentRoute != screen.route) {
-                                        navController.navigate(screen.route) {
-                                            popUpTo(navController.graph.findStartDestination().id) {
-                                                saveState = true
+                        NavigationBar(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            tonalElevation = 0.dp,
+                            modifier = Modifier.testTag("main_bottom_nav")
+                        ) {
+                            bottomNavItems.forEach { screen ->
+                                val selected = currentRoute == screen.route
+                                val iconVector = when (themeSettings.iconThemeStyle) {
+                                    IconThemeStyle.MODERN_OUTLINE -> screen.unselectedIcon
+                                    IconThemeStyle.CLASSIC_DYNAMIC -> if (selected) screen.selectedIcon else screen.unselectedIcon
+                                    IconThemeStyle.DUOTONE_GLOW -> screen.selectedIcon
+                                }
+
+                                NavigationBarItem(
+                                    icon = {
+                                        Icon(
+                                            imageVector = iconVector,
+                                            contentDescription = screen.title
+                                        )
+                                    },
+                                    label = {
+                                        Text(
+                                            screen.title,
+                                            fontSize = 11.sp,
+                                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+                                        )
+                                    },
+                                    selected = selected,
+                                    onClick = {
+                                        if (currentRoute != screen.route) {
+                                            navController.navigate(screen.route) {
+                                                popUpTo(navController.graph.findStartDestination().id) {
+                                                    saveState = true
+                                                }
+                                                launchSingleTop = true
+                                                restoreState = true
                                             }
-                                            launchSingleTop = true
-                                            restoreState = true
                                         }
-                                    }
-                                },
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    selectedTextColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    indicatorColor = MaterialTheme.colorScheme.secondaryContainer
+                                    },
+                                    colors = NavigationBarItemDefaults.colors(
+                                        selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        selectedTextColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        indicatorColor = MaterialTheme.colorScheme.secondaryContainer
+                                    )
                                 )
-                            )
+                            }
                         }
                     }
                 }
             }
-        }
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            NavHost(
-                navController = navController,
-                startDestination = Screen.Home.route,
-                modifier = Modifier.fillMaxSize()
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
             ) {
-                composable(Screen.Home.route) {
-                    HomeScreen(
-                        vocabViewModel = vocabViewModel,
-                        onStartStudy = { cards ->
-                            vocabViewModel.startStudySession(cards)
-                            navController.navigate(Screen.Study.route)
-                        },
-                        onNavigateToBrowse = { filter ->
-                            vocabViewModel.setFilter(filter)
-                            navController.navigate(Screen.Browse.route)
-                        },
-                        onNavigateToQuiz = {
-                            navController.navigate(Screen.Quiz.route)
-                        },
-                        onOpenAddCustomCard = {
-                            showAddCustomDialog = true
-                        },
-                        onNavigateToStats = {
-                            navController.navigate(Screen.Stats.route)
-                        }
-                    )
-                }
+                NavHost(
+                    navController = navController,
+                    startDestination = Screen.Home.route,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    composable(Screen.Home.route) {
+                        HomeScreen(
+                            vocabViewModel = vocabViewModel,
+                            onStartStudy = { cards ->
+                                vocabViewModel.startStudySession(cards)
+                                navController.navigate(Screen.Study.route)
+                            },
+                            onNavigateToBrowse = { filter ->
+                                vocabViewModel.setFilter(filter)
+                                navController.navigate(Screen.Browse.route)
+                            },
+                            onNavigateToQuiz = {
+                                navController.navigate(Screen.Quiz.route)
+                            },
+                            onOpenAddCustomCard = {
+                                showAddCustomDialog = true
+                            },
+                            onNavigateToStats = {
+                                navController.navigate(Screen.Stats.route)
+                            }
+                        )
+                    }
 
-                composable(Screen.Browse.route) {
-                    VocabBrowseScreen(
-                        vocabViewModel = vocabViewModel,
-                        onStartStudy = { cards ->
-                            vocabViewModel.startStudySession(cards)
-                            navController.navigate(Screen.Study.route)
-                        }
-                    )
-                }
+                    composable(Screen.Browse.route) {
+                        VocabBrowseScreen(
+                            vocabViewModel = vocabViewModel,
+                            onStartStudy = { cards ->
+                                vocabViewModel.startStudySession(cards)
+                                navController.navigate(Screen.Study.route)
+                            }
+                        )
+                    }
 
-                composable(Screen.Stats.route) {
-                    StatisticsScreen(
-                        vocabViewModel = vocabViewModel,
-                        quizViewModel = quizViewModel,
-                        onNavigateToStudy = { cards ->
-                            vocabViewModel.startStudySession(cards)
-                            navController.navigate(Screen.Study.route)
-                        },
-                        onNavigateToBrowse = { filter ->
-                            vocabViewModel.setFilter(filter)
-                            navController.navigate(Screen.Browse.route)
-                        }
-                    )
-                }
+                    composable(Screen.Stats.route) {
+                        StatisticsScreen(
+                            vocabViewModel = vocabViewModel,
+                            quizViewModel = quizViewModel,
+                            onNavigateToStudy = { cards ->
+                                vocabViewModel.startStudySession(cards)
+                                navController.navigate(Screen.Study.route)
+                            },
+                            onNavigateToBrowse = { filter ->
+                                vocabViewModel.setFilter(filter)
+                                navController.navigate(Screen.Browse.route)
+                            }
+                        )
+                    }
 
-                composable(Screen.Quiz.route) {
-                    QuizScreen(quizViewModel = quizViewModel)
-                }
+                    composable(Screen.Quiz.route) {
+                        QuizScreen(quizViewModel = quizViewModel)
+                    }
 
-                composable(Screen.Profile.route) {
-                    ProfileScreen(vocabViewModel = vocabViewModel)
-                }
+                    composable(Screen.Profile.route) {
+                        ProfileScreen(vocabViewModel = vocabViewModel)
+                    }
 
-                composable(Screen.Study.route) {
-                    FlashcardStudyScreen(
-                        vocabViewModel = vocabViewModel,
-                        onNavigateBack = {
-                            navController.popBackStack()
-                        }
-                    )
+                    composable(Screen.Study.route) {
+                        FlashcardStudyScreen(
+                            vocabViewModel = vocabViewModel,
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            }
+                        )
+                    }
                 }
             }
         }
-    }
 
-    if (showAddCustomDialog) {
-        AddCustomCardDialog(
-            onDismiss = { showAddCustomDialog = false },
-            onConfirm = { kanji, reading, burmese, pos, example, exBurmese, note ->
-                vocabViewModel.addCustomFlashcard(
-                    kanji = kanji,
-                    reading = reading,
-                    meaningBurmese = burmese,
-                    partOfSpeech = pos,
-                    exampleSentence = example,
-                    exampleMeaningBurmese = exBurmese,
-                    personalNote = note
-                )
-                showAddCustomDialog = false
-            }
-        )
+        if (showAddCustomDialog) {
+            val allCustomTags by vocabViewModel.allCustomTags.collectAsState()
+            AddCustomCardDialog(
+                onDismiss = { showAddCustomDialog = false },
+                availableTags = allCustomTags,
+                onConfirm = { kanji, reading, burmese, pos, example, exBurmese, note, tags ->
+                    vocabViewModel.addCustomFlashcard(
+                        kanji = kanji,
+                        reading = reading,
+                        meaningBurmese = burmese,
+                        partOfSpeech = pos,
+                        exampleSentence = example,
+                        exampleMeaningBurmese = exBurmese,
+                        personalNote = note,
+                        tags = tags
+                    )
+                    showAddCustomDialog = false
+                }
+            )
+        }
     }
 }

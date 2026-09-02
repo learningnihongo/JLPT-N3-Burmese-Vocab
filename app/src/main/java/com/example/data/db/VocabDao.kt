@@ -33,9 +33,16 @@ interface VocabDao {
            OR reading LIKE '%' || :query || '%' 
            OR meaningBurmese LIKE '%' || :query || '%' 
            OR personalNote LIKE '%' || :query || '%'
+           OR tags LIKE '%' || :query || '%'
         ORDER BY lessonNumber ASC, id ASC
     """)
     fun searchCards(query: String): Flow<List<VocabCard>>
+
+    @Query("SELECT * FROM vocab_cards WHERE tags LIKE '%' || :tag || '%' ORDER BY lessonNumber ASC, id ASC")
+    fun getCardsByTag(tag: String): Flow<List<VocabCard>>
+
+    @Query("SELECT tags FROM vocab_cards WHERE tags != ''")
+    fun getAllTagsRaw(): Flow<List<String>>
 
     @Query("SELECT * FROM vocab_cards WHERE id = :id LIMIT 1")
     suspend fun getCardById(id: Long): VocabCard?
@@ -88,9 +95,21 @@ interface VocabDao {
     @Delete
     suspend fun deleteCard(card: VocabCard)
 
+    @Query("UPDATE vocab_cards SET timesCorrect = timesCorrect + 1, lastReviewedTimestamp = :now WHERE id = :id")
+    suspend fun incrementCorrect(id: Long, now: Long)
+
+    @Query("UPDATE vocab_cards SET timesIncorrect = timesIncorrect + 1, lastReviewedTimestamp = :now WHERE id = :id")
+    suspend fun incrementIncorrect(id: Long, now: Long)
+
+    @Query("SELECT * FROM vocab_cards WHERE isBookmarked = 1 ORDER BY RANDOM() LIMIT :limit")
+    suspend fun getRandomBookmarkedCards(limit: Int): List<VocabCard>
+
     @Query("UPDATE vocab_cards SET isBookmarked = :isBookmarked WHERE id = :id")
     suspend fun setBookmark(id: Long, isBookmarked: Boolean)
 
     @Query("UPDATE vocab_cards SET personalNote = :note WHERE id = :id")
     suspend fun updatePersonalNote(id: Long, note: String)
+
+    @Query("UPDATE vocab_cards SET tags = :tags WHERE id = :id")
+    suspend fun updateCardTags(id: Long, tags: String)
 }

@@ -58,6 +58,14 @@ class VocabRepository(
 
     fun getWeakCards(): Flow<List<VocabCard>> = vocabDao.getWeakCards()
 
+    fun getCardsByTag(tag: String): Flow<List<VocabCard>> = vocabDao.getCardsByTag(tag)
+
+    fun getAllCustomTags(): Flow<List<String>> = vocabDao.getAllTagsRaw().map { rawTagsList ->
+        rawTagsList.flatMap { raw ->
+            raw.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        }.distinct().sorted()
+    }
+
     fun searchCards(query: String): Flow<List<VocabCard>> = vocabDao.searchCards(query)
 
     fun getLessonProgress(): Flow<List<LessonProgress>> = vocabDao.getAllCards().map { cards ->
@@ -90,11 +98,29 @@ class VocabRepository(
     suspend fun getRandomWeakCardsForQuiz(limit: Int): List<VocabCard> =
         vocabDao.getRandomWeakCards(limit)
 
+    suspend fun getRandomBookmarkedCardsForQuiz(limit: Int): List<VocabCard> =
+        vocabDao.getRandomBookmarkedCards(limit)
+
     suspend fun getRandomCardsWithSentenceForQuiz(limit: Int): List<VocabCard> =
         vocabDao.getRandomCardsWithSentence(limit)
 
     suspend fun getCardsByIds(ids: List<Long>): List<VocabCard> =
         vocabDao.getCardsByIds(ids)
+
+    suspend fun recordCardQuizOutcome(cardId: Long, wasCorrect: Boolean) {
+        val now = System.currentTimeMillis()
+        if (wasCorrect) {
+            vocabDao.incrementCorrect(cardId, now)
+        } else {
+            vocabDao.incrementIncorrect(cardId, now)
+        }
+    }
+
+    suspend fun bookmarkAllCards(cardIds: List<Long>, isBookmarked: Boolean = true) {
+        cardIds.forEach { id ->
+            vocabDao.setBookmark(id, isBookmarked)
+        }
+    }
 
     suspend fun setBookmarkById(cardId: Long, isBookmarked: Boolean) {
         vocabDao.setBookmark(cardId, isBookmarked)
@@ -108,6 +134,29 @@ class VocabRepository(
         vocabDao.updatePersonalNote(cardId, personalNote)
     }
 
+    suspend fun updateCardTags(cardId: Long, tags: List<String>) {
+        val cleanString = tags.map { it.trim() }.filter { it.isNotEmpty() }.distinct().joinToString(",")
+        vocabDao.updateCardTags(cardId, cleanString)
+    }
+
+    suspend fun addTagToCard(cardId: Long, tag: String) {
+        val card = vocabDao.getCardById(cardId) ?: return
+        val cleanTag = tag.trim()
+        if (cleanTag.isEmpty()) return
+        val currentTags = card.tagList.toMutableList()
+        if (!currentTags.any { it.equals(cleanTag, ignoreCase = true) }) {
+            currentTags.add(cleanTag)
+            updateCardTags(cardId, currentTags)
+        }
+    }
+
+    suspend fun removeTagFromCard(cardId: Long, tag: String) {
+        val card = vocabDao.getCardById(cardId) ?: return
+        val cleanTag = tag.trim()
+        val currentTags = card.tagList.filterNot { it.equals(cleanTag, ignoreCase = true) }
+        updateCardTags(cardId, currentTags)
+    }
+
     suspend fun insertCustomCard(
         kanji: String,
         reading: String,
@@ -115,7 +164,8 @@ class VocabRepository(
         partOfSpeech: String,
         exampleSentence: String,
         exampleMeaningBurmese: String,
-        personalNote: String
+        personalNote: String,
+        tags: String = ""
     ): Long {
         val newCard = VocabCard(
             lessonNumber = 999, // Custom personalized lesson
@@ -128,7 +178,8 @@ class VocabRepository(
             exampleSentence = exampleSentence,
             exampleMeaningBurmese = exampleMeaningBurmese,
             personalNote = personalNote,
-            isCustom = true
+            isCustom = true,
+            tags = tags.trim()
         )
         val id = vocabDao.insertCard(newCard)
         addXp(15) // Reward for creating flashcard

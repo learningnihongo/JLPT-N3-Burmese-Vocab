@@ -18,6 +18,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,15 +46,20 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Contrast
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Hearing
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.NavigateBefore
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay
@@ -84,6 +90,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -130,6 +138,7 @@ import com.example.ui.theme.SrsGoodBg
 import com.example.ui.theme.SrsGoodText
 import com.example.ui.theme.SrsHardBg
 import com.example.ui.theme.SrsHardText
+import com.example.ui.theme.ThemeMode
 import com.example.ui.theme.WeakOrange
 import com.example.ui.viewmodel.FlashcardStudyMode
 import com.example.ui.viewmodel.VocabViewModel
@@ -155,6 +164,14 @@ fun FlashcardStudyScreen(
     val autoPlaySpeed by vocabViewModel.autoPlaySpeedSec.collectAsState()
     val sessionStats by vocabViewModel.sessionStats.collectAsState()
     val fontScale by vocabViewModel.flashcardFontScale.collectAsState()
+    val themeSettings by vocabViewModel.themeSettings.collectAsState()
+
+    val systemIsDark = isSystemInDarkTheme()
+    val isCurrentlyDark = when (themeSettings.themeMode) {
+        ThemeMode.SYSTEM -> systemIsDark
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
 
     var autoSpeakEnabled by remember { mutableStateOf(true) }
     var showNoteDialog by remember { mutableStateOf(false) }
@@ -447,6 +464,7 @@ fun FlashcardStudyScreen(
 
     val currentCard = deck.getOrNull(currentIndex) ?: return
     val progress = (currentIndex + 1).toFloat() / deck.size.toFloat()
+    val predictedIntervals = remember(currentCard) { vocabViewModel.getPredictedIntervals(currentCard) }
 
     // Auto-pronounce when new card loads if auto-speak is enabled
     LaunchedEffect(currentIndex, autoSpeakEnabled, studyMode) {
@@ -478,6 +496,19 @@ fun FlashcardStudyScreen(
                     }
                 },
                 actions = {
+                    // Auto-Play Hands-Free Slideshow Toggle
+                    IconButton(
+                        onClick = { vocabViewModel.toggleAutoPlay() },
+                        modifier = Modifier.testTag("auto_play_toggle_btn")
+                    ) {
+                        Icon(
+                            imageVector = if (isAutoPlay) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = if (isAutoPlay) "Pause Auto-play" else "Start Auto-play",
+                            tint = if (isAutoPlay) JapaneseCrimson else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+
                     // Quick Deck Jump / Overview Grid
                     IconButton(
                         onClick = { showJumpSheet = true },
@@ -486,87 +517,35 @@ fun FlashcardStudyScreen(
                         Icon(
                             imageVector = Icons.Default.GridView,
                             contentDescription = "Jump to Card",
-                            tint = MaterialTheme.colorScheme.onSurface
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
 
-                    // Auto-Play Hands-Free Slideshow Toggle
-                    IconButton(
-                        onClick = { vocabViewModel.toggleAutoPlay() },
-                        modifier = Modifier.testTag("auto_play_toggle_btn")
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = if (isAutoPlay) JapaneseCrimson else MaterialTheme.colorScheme.surfaceVariant
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
-                                horizontalArrangement = Arrangement.spacedBy(2.dp)
-                            ) {
-                                Icon(
-                                    imageVector = if (isAutoPlay) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                    contentDescription = "Auto Play",
-                                    tint = if (isAutoPlay) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Text(
-                                    text = "Auto",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isAutoPlay) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-
-                    // Font Size Adjuster Button
+                    // Display & Font Settings Sheet
                     IconButton(
                         onClick = { showFontSheet = true },
                         modifier = Modifier.testTag("flashcard_font_size_btn")
                     ) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
-                                horizontalArrangement = Arrangement.spacedBy(2.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.FormatSize,
-                                    contentDescription = "Adjust Font Size",
-                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    modifier = Modifier.size(15.dp)
-                                )
-                                Text(
-                                    text = "${(fontScale * 100).roundToInt()}%",
-                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                                )
-                            }
-                        }
+                        Icon(
+                            imageVector = Icons.Default.FormatSize,
+                            contentDescription = "Study Display Settings",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
 
-                    // TTS Speed Adjuster Button (0.6x, 0.8x, 1.0x)
+                    // Global Theme Toggle Button (Light/Dark Mode for Night Study)
                     IconButton(
-                        onClick = { vocabViewModel.toggleSpeechRate() },
-                        modifier = Modifier.testTag("tts_speed_toggle_btn")
+                        onClick = { vocabViewModel.toggleDarkMode(isCurrentlyDark) },
+                        modifier = Modifier.testTag("flashcard_theme_toggle_btn")
                     ) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f)
-                        ) {
-                            Text(
-                                text = "${speechRate}x",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
-                            )
-                        }
+                        Icon(
+                            imageVector = if (isCurrentlyDark) Icons.Default.LightMode else Icons.Default.DarkMode,
+                            contentDescription = if (isCurrentlyDark) "Switch to Light Mode" else "Switch to Dark Mode",
+                            tint = if (isCurrentlyDark) Color(0xFFFFD54F) else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
 
                     // Bookmark Button
@@ -574,7 +553,8 @@ fun FlashcardStudyScreen(
                         Icon(
                             imageVector = if (currentCard.isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
                             contentDescription = "Bookmark",
-                            tint = if (currentCard.isBookmarked) SakuraPinkDark else MaterialTheme.colorScheme.outline
+                            tint = if (currentCard.isBookmarked) SakuraPinkDark else MaterialTheme.colorScheme.outline,
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                 }
@@ -1231,46 +1211,67 @@ fun FlashcardStudyScreen(
                     )
                 }
 
-                // Again (1m)
+                // SRS Rating Colors adaptive to Light / Dark (Night Study) mode
+                val againBg = if (isCurrentlyDark) Color(0xFF4A1818) else SrsAgainBg
+                val againText = if (isCurrentlyDark) Color(0xFFFFB4AB) else SrsAgainText
+                val againBorder = if (isCurrentlyDark) Color(0xFF8C1D18) else null
+
+                val hardBg = if (isCurrentlyDark) Color(0xFF422606) else SrsHardBg
+                val hardText = if (isCurrentlyDark) Color(0xFFFFD59E) else SrsHardText
+                val hardBorder = if (isCurrentlyDark) Color(0xFF8F5300) else null
+
+                val goodBg = if (isCurrentlyDark) Color(0xFF0F325E) else SrsGoodBg
+                val goodText = if (isCurrentlyDark) Color(0xFFA6CCFF) else SrsGoodText
+                val goodBorder = if (isCurrentlyDark) Color(0xFF1B5599) else null
+
+                val easyBg = if (isCurrentlyDark) Color(0xFF133E18) else SrsEasyBg
+                val easyText = if (isCurrentlyDark) Color(0xFFA8EBB0) else SrsEasyText
+                val easyBorder = if (isCurrentlyDark) Color(0xFF1F6E29) else null
+
+                // Again
                 RatingButton(
                     rating = ReviewRating.AGAIN,
                     label = "AGAIN",
-                    interval = "1m",
-                    containerColor = SrsAgainBg,
-                    contentColor = SrsAgainText,
+                    interval = predictedIntervals[ReviewRating.AGAIN] ?: "10m",
+                    containerColor = againBg,
+                    contentColor = againText,
+                    borderColor = againBorder,
                     modifier = Modifier.weight(1f),
                     onClick = { vocabViewModel.rateCurrentCard(ReviewRating.AGAIN) }
                 )
 
-                // Hard (2d)
+                // Hard
                 RatingButton(
                     rating = ReviewRating.HARD,
                     label = "HARD",
-                    interval = "2d",
-                    containerColor = SrsHardBg,
-                    contentColor = SrsHardText,
+                    interval = predictedIntervals[ReviewRating.HARD] ?: "1d",
+                    containerColor = hardBg,
+                    contentColor = hardText,
+                    borderColor = hardBorder,
                     modifier = Modifier.weight(1f),
                     onClick = { vocabViewModel.rateCurrentCard(ReviewRating.HARD) }
                 )
 
-                // Good (4d)
+                // Good
                 RatingButton(
                     rating = ReviewRating.GOOD,
                     label = "GOOD",
-                    interval = "4d",
-                    containerColor = SrsGoodBg,
-                    contentColor = SrsGoodText,
+                    interval = predictedIntervals[ReviewRating.GOOD] ?: "6d",
+                    containerColor = goodBg,
+                    contentColor = goodText,
+                    borderColor = goodBorder,
                     modifier = Modifier.weight(1f),
                     onClick = { vocabViewModel.rateCurrentCard(ReviewRating.GOOD) }
                 )
 
-                // Easy (1w)
+                // Easy
                 RatingButton(
                     rating = ReviewRating.EASY,
                     label = "EASY",
-                    interval = "1w",
-                    containerColor = SrsEasyBg,
-                    contentColor = SrsEasyText,
+                    interval = predictedIntervals[ReviewRating.EASY] ?: "8d",
+                    containerColor = easyBg,
+                    contentColor = easyText,
+                    borderColor = easyBorder,
                     modifier = Modifier.weight(1f),
                     onClick = { vocabViewModel.rateCurrentCard(ReviewRating.EASY) }
                 )
@@ -1633,15 +1634,150 @@ fun FlashcardStudyScreen(
                     }
                 }
 
+                // TTS Speech Speed Selection
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = "Japanese Audio Speech Rate",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(0.6f to "0.6x (Slow)", 0.8f to "0.8x (Natural)", 1.0f to "1.0x (Normal)").forEach { (rate, label) ->
+                            val isSelected = kotlin.math.abs(speechRate - rate) < 0.05f
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                                border = if (isSelected) BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { vocabViewModel.setSpeechRate(rate) }
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(vertical = 8.dp, horizontal = 2.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Night Study Theme Mode Selector inside Display Settings
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = "Night Study & Theme Mode",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(
+                            Triple("System", Icons.Default.BrightnessAuto, ThemeMode.SYSTEM),
+                            Triple("Light", Icons.Default.LightMode, ThemeMode.LIGHT),
+                            Triple("Dark", Icons.Default.DarkMode, ThemeMode.DARK)
+                        ).forEach { (label, icon, mode) ->
+                            val isSelected = themeSettings.themeMode == mode
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                border = if (isSelected) BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { vocabViewModel.setThemeMode(mode) }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        imageVector = icon,
+                                        contentDescription = null,
+                                        tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = label,
+                                        fontSize = 11.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // OLED Pure Black Option (if Dark or System mode active)
+                if (themeSettings.themeMode == ThemeMode.DARK || (themeSettings.themeMode == ThemeMode.SYSTEM && isCurrentlyDark)) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Contrast,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = "AMOLED Pure Black (Night Reading)",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            Switch(
+                                checked = themeSettings.oledBlack,
+                                onCheckedChange = { vocabViewModel.setOledBlack(it) },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.White,
+                                    checkedTrackColor = MaterialTheme.colorScheme.primary
+                                )
+                            )
+                        }
+                    }
+                }
+
                 Button(
                     onClick = { showFontSheet = false },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp),
                     shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = JapaneseCrimson)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
-                    Text("Apply & Continue Study", fontWeight = FontWeight.Bold)
+                    Text("Apply & Continue Study", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -1669,6 +1805,7 @@ private fun RatingButton(
     interval: String,
     containerColor: Color,
     contentColor: Color,
+    borderColor: Color? = null,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
@@ -1678,6 +1815,7 @@ private fun RatingButton(
             .height(52.dp)
             .testTag("rate_btn_${rating.name.lowercase()}"),
         shape = RoundedCornerShape(14.dp),
+        border = if (borderColor != null) BorderStroke(1.dp, borderColor) else null,
         colors = ButtonDefaults.buttonColors(
             containerColor = containerColor,
             contentColor = contentColor

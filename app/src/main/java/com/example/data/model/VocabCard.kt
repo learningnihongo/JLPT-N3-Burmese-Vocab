@@ -19,6 +19,7 @@ data class VocabCard(
     val personalNote: String = "",
     val isBookmarked: Boolean = false,
     val isCustom: Boolean = false,
+    val tags: String = "", // Comma-separated custom tags (e.g., "Work, School, JLPT N3 Grammar")
     
     // Spaced Repetition (SM-2) fields
     val repetitions: Int = 0,             // Consecutive successful recalls
@@ -38,6 +39,13 @@ data class VocabCard(
             if (repetitions == 0 || nextReviewTimestamp == 0L) return true
             return System.currentTimeMillis() >= nextReviewTimestamp
         }
+
+    val tagList: List<String>
+        get() = if (tags.isBlank()) emptyList() else tags.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+
+    fun hasTag(tag: String): Boolean {
+        return tagList.any { it.equals(tag.trim(), ignoreCase = true) }
+    }
 }
 
 data class LessonProgress(

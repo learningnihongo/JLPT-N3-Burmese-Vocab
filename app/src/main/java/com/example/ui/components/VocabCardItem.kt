@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -45,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.VocabCard
 import com.example.ui.theme.MasteredGreen
+import com.example.ui.theme.PolishPrimary
 import com.example.ui.theme.ReviewBlue
 import com.example.ui.theme.SakuraPinkDark
 import com.example.ui.theme.WeakOrange
@@ -55,6 +57,8 @@ fun VocabCardItem(
     onBookmarkToggle: () -> Unit,
     onSpeak: (String) -> Unit,
     onEditNote: () -> Unit,
+    onEditTags: (() -> Unit)? = null,
+    onTagClick: ((String) -> Unit)? = null,
     onDelete: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -79,12 +83,12 @@ fun VocabCardItem(
             .fillMaxWidth()
             .testTag("vocab_card_${card.id}")
             .clickable { expanded = !expanded },
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier
@@ -179,7 +183,7 @@ fun VocabCardItem(
                 fontWeight = FontWeight.SemiBold
             )
 
-            // Tags (Part of Speech & Lesson)
+            // Tags & Categories (Part of Speech, Custom, and User Tags)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -213,6 +217,38 @@ fun VocabCardItem(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.outline
                     )
+                }
+
+                // Custom Group/Category Tags
+                card.tagList.take(2).forEach { tag ->
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = PolishPrimary.copy(alpha = 0.12f),
+                        modifier = Modifier.clickable { onTagClick?.invoke(tag) ?: onEditTags?.invoke() }
+                    ) {
+                        Text(
+                            text = "#$tag",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                            color = PolishPrimary,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                        )
+                    }
+                }
+
+                if (card.tagList.size > 2) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier.clickable { onEditTags?.invoke() }
+                    ) {
+                        Text(
+                            text = "+${card.tagList.size - 2}",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 3.dp)
+                        )
+                    }
                 }
             }
 
@@ -289,6 +325,20 @@ fun VocabCardItem(
                             color = if (card.personalNote.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
                             modifier = Modifier.weight(1f)
                         )
+
+                        if (onEditTags != null) {
+                            IconButton(
+                                onClick = onEditTags,
+                                modifier = Modifier.size(30.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Label,
+                                    contentDescription = "Edit Tags",
+                                    tint = PolishPrimary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
 
                         IconButton(
                             onClick = onEditNote,

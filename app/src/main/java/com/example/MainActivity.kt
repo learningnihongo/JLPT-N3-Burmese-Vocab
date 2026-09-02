@@ -19,9 +19,7 @@ class MainActivity : ComponentActivity() {
         ReminderScheduler.rescheduleFromPreferences(this)
 
         setContent {
-            KanjiKotobaTheme {
-                MainApp()
-            }
+            MainApp()
         }
     }
 }

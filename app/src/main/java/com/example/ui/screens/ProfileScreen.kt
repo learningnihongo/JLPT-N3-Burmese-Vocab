@@ -55,9 +55,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.data.model.Badge
+import com.example.ui.components.AppThemeSettingsCard
 import com.example.ui.components.BadgeDetailDialog
 import com.example.ui.components.DailyReminderSettingsCard
 import com.example.ui.components.TrophyShowcaseCard
+import com.example.ui.components.WeeklyMasteryProgressChartCard
 import com.example.ui.theme.JapaneseCrimson
 import com.example.ui.theme.JapaneseIndigo
 import com.example.ui.theme.MasteredGreen
@@ -77,6 +79,8 @@ fun ProfileScreen(
     val dueCards by vocabViewModel.dueCount.collectAsState()
     val badges by vocabViewModel.allBadges.collectAsState()
     val reminderSettings by vocabViewModel.reminderSettings.collectAsState()
+    val themeSettings by vocabViewModel.themeSettings.collectAsState()
+    val weeklyProgressSummary by vocabViewModel.weeklyMasteryVsReviewedStats.collectAsState()
 
     var showEditProfileDialog by remember { mutableStateOf(false) }
     var selectedBadgeForDetail by remember { mutableStateOf<Badge?>(null) }
@@ -84,207 +88,203 @@ fun ProfileScreen(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
             .testTag("profile_screen"),
-        contentPadding = PaddingValues(bottom = 90.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        contentPadding = PaddingValues(bottom = 96.dp, top = 20.dp, start = 20.dp, end = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // User Profile Header Card
+        // 1. Clean Profile & Level Header Card
         item {
             Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("profile_header_card"),
+                shape = RoundedCornerShape(22.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
-                Box(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(
-                                    JapaneseCrimson.copy(alpha = 0.08f),
-                                    JapaneseIndigo.copy(alpha = 0.08f)
-                                )
-                            )
-                        )
-                        .padding(20.dp)
+                        .padding(22.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp)
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    // Profile Info & Edit Button
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                            modifier = Modifier.weight(1f)
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                            Box(
+                                modifier = Modifier
+                                    .size(54.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primaryContainer),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(56.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.primaryContainer),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = profile?.name?.take(2)?.uppercase() ?: "KK",
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 20.sp
-                                    )
-                                }
-
-                                Column {
-                                    Text(
-                                        text = profile?.name ?: "JLPT Scholar",
-                                        style = MaterialTheme.typography.titleLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        text = "Target: JLPT ${profile?.targetJlptLevel ?: "N3"} • Daily Goal: ${profile?.dailyGoal ?: 15} words",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
+                                Text(
+                                    text = profile?.name?.take(2)?.uppercase() ?: "JL",
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 19.sp
+                                )
                             }
 
-                            IconButton(onClick = { showEditProfileDialog = true }) {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = "Edit Profile",
-                                    tint = MaterialTheme.colorScheme.primary
+                            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Text(
+                                    text = profile?.name ?: "JLPT Scholar",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Target: JLPT ${profile?.targetJlptLevel ?: "N3"} • ${profile?.dailyGoal ?: 15} words/day",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
 
-                        // Gamified Level & XP Section
-                        val xp = profile?.totalXp ?: 0
-                        val currentLevel = profile?.level ?: 1
-                        val nextLevelXp = currentLevel * 200
-                        val currentLevelProgress = (xp % 200).toFloat() / 200f
-
-                        Surface(
-                            shape = RoundedCornerShape(20.dp),
-                            color = MaterialTheme.colorScheme.surface,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)),
-                            modifier = Modifier.fillMaxWidth()
+                        IconButton(
+                            onClick = { showEditProfileDialog = true },
+                            modifier = Modifier.size(36.dp)
                         ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit Profile",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+
+                    // Level & XP Progress
+                    val xp = profile?.totalXp ?: 0
+                    val currentLevel = profile?.level ?: 1
+                    val nextLevelXp = currentLevel * 200
+                    val currentLevelProgress = (xp % 200).toFloat() / 200f
+
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.08f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Star,
-                                            contentDescription = null,
-                                            tint = com.example.ui.theme.StreakOrange,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                        Text(
-                                            text = "Level $currentLevel",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                    }
-
+                                    Icon(
+                                        imageVector = Icons.Default.Star,
+                                        contentDescription = null,
+                                        tint = com.example.ui.theme.StreakOrange,
+                                        modifier = Modifier.size(18.dp)
+                                    )
                                     Text(
-                                        text = "$xp Total XP",
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary
+                                        text = "Level $currentLevel",
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                 }
 
-                                LinearProgressIndicator(
-                                    progress = { currentLevelProgress },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(8.dp)
-                                        .clip(RoundedCornerShape(50)),
-                                    color = MaterialTheme.colorScheme.primary,
-                                    trackColor = com.example.ui.theme.PolishOutlineVariant
-                                )
-
                                 Text(
-                                    text = "${200 - (xp % 200)} XP to reach Level ${currentLevel + 1}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    text = "$xp Total XP",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                             }
+
+                            LinearProgressIndicator(
+                                progress = { currentLevelProgress },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(5.dp)
+                                    .clip(RoundedCornerShape(50)),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = com.example.ui.theme.PolishOutlineVariant
+                            )
+
+                            Text(
+                                text = "${200 - (xp % 200)} XP to Level ${currentLevel + 1}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.outline
+                            )
                         }
                     }
                 }
             }
         }
 
-        // Spaced Repetition (SRS) Mastery Analytics
+        // 2. Learning Overview Metrics (Clean 4-Box Grid)
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(22.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(18.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Psychology,
-                            contentDescription = null,
-                            tint = JapaneseCrimson,
-                            modifier = Modifier.size(22.dp)
-                        )
-                        Text(
-                            text = "Long-Term Retention Tracker",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-
                     Text(
-                        text = "The SuperMemo-2 algorithm predicts optimal review intervals to guarantee long-term vocabulary memory before forgetting occurs.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline
+                        text = "Learning Overview",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
                     )
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        SrsMetricBox(
+                        ProfileStatTile(
                             title = "Mastered",
                             value = "$masteredCards",
+                            icon = Icons.Default.CheckCircle,
                             color = MasteredGreen,
                             modifier = Modifier.weight(1f)
                         )
-                        SrsMetricBox(
-                            title = "Due for Review",
+                        ProfileStatTile(
+                            title = "Due Review",
                             value = "$dueCards",
+                            icon = Icons.Default.Psychology,
                             color = JapaneseCrimson,
                             modifier = Modifier.weight(1f)
                         )
-                        SrsMetricBox(
-                            title = "Total Database",
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        ProfileStatTile(
+                            title = "Streak",
+                            value = "${profile?.currentStreak ?: 1} Days",
+                            icon = Icons.Default.LocalFireDepartment,
+                            color = com.example.ui.theme.StreakOrange,
+                            modifier = Modifier.weight(1f)
+                        )
+                        ProfileStatTile(
+                            title = "Total Cards",
                             value = "$totalCards",
+                            icon = Icons.Default.School,
                             color = JapaneseIndigo,
                             modifier = Modifier.weight(1f)
                         )
@@ -293,53 +293,14 @@ fun ProfileScreen(
             }
         }
 
-        // Study Streak and Habit Card
+        // 3. Weekly Progress Visualization: Kanji Mastered vs. Reviewed
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(18.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(50.dp)
-                            .clip(CircleShape)
-                            .background(WeakOrange.copy(alpha = 0.15f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.LocalFireDepartment,
-                            contentDescription = null,
-                            tint = WeakOrange,
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-
-                    Column {
-                        Text(
-                            text = "${profile?.currentStreak ?: 1}-Day Learning Streak",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "Daily habit strengthens kanji neural pathways. Complete at least one review daily!",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline
-                        )
-                    }
-                }
-            }
+            WeeklyMasteryProgressChartCard(
+                weeklySummary = weeklyProgressSummary
+            )
         }
 
-        // Daily Study Reminder Settings Card (WorkManager Local Notifications)
+        // 4. Daily Study Reminder Settings
         item {
             DailyReminderSettingsCard(
                 settings = reminderSettings,
@@ -358,7 +319,26 @@ fun ProfileScreen(
             )
         }
 
-        // Digital Trophies & Milestones Showcase
+        // 4. Appearance & Theme Settings
+        item {
+            AppThemeSettingsCard(
+                themeSettings = themeSettings,
+                onSelectMode = { mode ->
+                    vocabViewModel.setThemeMode(mode)
+                },
+                onSelectPalette = { palette ->
+                    vocabViewModel.setThemePalette(palette)
+                },
+                onSelectIconStyle = { style ->
+                    vocabViewModel.setIconThemeStyle(style)
+                },
+                onToggleOledBlack = { oled ->
+                    vocabViewModel.setOledBlack(oled)
+                }
+            )
+        }
+
+        // 5. Digital Trophies & Milestones Showcase
         item {
             TrophyShowcaseCard(
                 badges = badges,
@@ -368,38 +348,46 @@ fun ProfileScreen(
             )
         }
 
-        // Offline Ready Indicator
+        // 6. Offline Ready Status (Minimalist Tile)
         item {
-            Card(
+            Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(18.dp),
+                        .padding(horizontal = 18.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.CloudDone,
-                        contentDescription = "Offline Mode",
-                        tint = MasteredGreen,
-                        modifier = Modifier.size(26.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .background(MasteredGreen.copy(alpha = 0.1f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CloudDone,
+                            contentDescription = "Offline Ready",
+                            tint = MasteredGreen,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
 
                     Column {
                         Text(
-                            text = "Offline Mode: 100% Active",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
+                            text = "Offline Mode Active",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "All JLPT N3 vocabulary, audio pronunciation, and SRS databases are stored locally on your device without needing internet.",
+                            text = "All vocabulary, pronunciation audio, and progress stored locally.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -429,34 +417,53 @@ fun ProfileScreen(
 }
 
 @Composable
-private fun SrsMetricBox(
+private fun ProfileStatTile(
     title: String,
     value: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
     color: Color,
     modifier: Modifier = Modifier
 ) {
     Surface(
         shape = RoundedCornerShape(14.dp),
-        color = color.copy(alpha = 0.1f),
+        color = color.copy(alpha = 0.08f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.18f)),
         modifier = modifier
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = color
-            )
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelSmall,
-                color = color,
-                fontWeight = FontWeight.SemiBold
-            )
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .background(color.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

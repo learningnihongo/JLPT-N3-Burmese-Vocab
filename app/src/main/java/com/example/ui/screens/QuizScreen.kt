@@ -2,7 +2,13 @@ package com.example.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -30,11 +36,14 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkAdd
+import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.ChangeCircle
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Headphones
@@ -44,11 +53,15 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Warning
@@ -65,6 +78,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -76,6 +91,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -98,89 +114,118 @@ import com.example.ui.viewmodel.QuizType
 import com.example.ui.viewmodel.QuizViewModel
 
 @Composable
-fun QuizScreen(
-    quizViewModel: QuizViewModel,
-    modifier: Modifier = Modifier
-) {
+fun QuizScreen(quizViewModel: QuizViewModel) {
     val state by quizViewModel.quizState.collectAsState()
-    val quizHistory by quizViewModel.quizHistory.collectAsState()
+    val history by quizViewModel.quizHistory.collectAsState()
+    val isSpeaking by quizViewModel.isTtsSpeaking.collectAsState()
 
-    var questionCount by remember { mutableIntStateOf(10) }
-    var selectedLessonFilter by remember { mutableIntStateOf(0) } // 0: All, -1: Weak words, 1..10: Lessons
-
-    if (state.isFinished) {
-        // Quiz Results Summary View
-        QuizResultView(
-            state = state,
-            onRestart = {
-                quizViewModel.startQuiz(
-                    quizType = state.quizType,
-                    lessonFilter = state.lessonFilter,
-                    questionCount = state.questions.size
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        when {
+            state.isQuizActive -> {
+                ActiveQuizView(
+                    state = state,
+                    isSpeaking = isSpeaking,
+                    onSelectOption = { quizViewModel.selectOption(it) },
+                    onUseFiftyFifty = { quizViewModel.useFiftyFifty() },
+                    onSwapQuestion = { quizViewModel.swapCurrentQuestion() },
+                    onToggleClue = { quizViewModel.toggleClue() },
+                    onTogglePause = { quizViewModel.togglePause() },
+                    onToggleAudioSpeed = { quizViewModel.toggleAudioSpeed() },
+                    onToggleBookmark = { quizViewModel.toggleCurrentCardBookmark() },
+                    onNext = { quizViewModel.nextQuestion() },
+                    onSpeak = { text, rate -> quizViewModel.speak(text, rate) },
+                    onExit = { quizViewModel.exitQuiz() }
                 )
-            },
-            onRetryMissed = { quizViewModel.retryMissedQuestions() },
-            onToggleBookmark = { cardId, isBookmarked ->
-                quizViewModel.toggleBookmarkInReview(cardId, isBookmarked)
-            },
-            onSpeak = { quizViewModel.speak(it) },
-            onExit = { quizViewModel.exitQuiz() }
-        )
-    } else if (state.isQuizActive && state.questions.isNotEmpty()) {
-        // Active Quiz Question View
-        ActiveQuizView(
-            state = state,
-            onSelectOption = { quizViewModel.selectOption(it) },
-            onUseFiftyFifty = { quizViewModel.useFiftyFifty() },
-            onToggleClue = { quizViewModel.toggleClue() },
-            onToggleBookmark = { quizViewModel.toggleCurrentCardBookmark() },
-            onNext = { quizViewModel.nextQuestion() },
-            onSpeak = { quizViewModel.speak(it) },
-            onExit = { quizViewModel.exitQuiz() }
-        )
-    } else {
-        // Quiz Lobby / Mode Select View
-        LazyColumn(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-                .testTag("quiz_lobby_screen"),
-            contentPadding = PaddingValues(bottom = 90.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Header Banner
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                Brush.horizontalGradient(
-                                    colors = listOf(
-                                        JapaneseCrimson.copy(alpha = 0.10f),
-                                        StreakOrange.copy(alpha = 0.08f),
-                                        JapaneseIndigo.copy(alpha = 0.10f)
-                                    )
+            }
+            state.isFinished -> {
+                QuizResultView(
+                    state = state,
+                    onRestart = {
+                        quizViewModel.startQuiz(
+                            quizType = state.quizType,
+                            lessonFilter = state.lessonFilter,
+                            questionCount = state.questions.size
+                        )
+                    },
+                    onRetryMissed = { quizViewModel.retryMissedQuestions() },
+                    onBookmarkAllMissed = { quizViewModel.bookmarkAllMissedCards() },
+                    onToggleBookmark = { id, current -> quizViewModel.toggleBookmarkInReview(id, current) },
+                    onSpeak = { text -> quizViewModel.speak(text) },
+                    onExit = { quizViewModel.exitQuiz() }
+                )
+            }
+            else -> {
+                QuizLobbyView(
+                    history = history,
+                    onStartQuiz = { type, lesson, count ->
+                        quizViewModel.startQuiz(type, lesson, count)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuizLobbyView(
+    history: List<QuizHistory>,
+    onStartQuiz: (QuizType, Int?, Int) -> Unit
+) {
+    var selectedLessonFilter by remember { mutableStateOf<Int?>(null) } // null = All, -2 = Bookmarked, -1 = Weak, 1..29 = Lesson
+    var selectedQuestionCount by remember { mutableIntStateOf(10) }
+    var showHistoryDialog by remember { mutableStateOf(false) }
+
+    val questionCountOptions = listOf(5, 10, 15, 20, 25)
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .testTag("quiz_lobby_screen"),
+        contentPadding = PaddingValues(bottom = 90.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Hero Arena Banner
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    JapaneseCrimson.copy(alpha = 0.12f),
+                                    JapaneseIndigo.copy(alpha = 0.05f)
                                 )
                             )
-                            .padding(20.dp)
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        )
+                        .padding(20.dp)
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Box(
                                     modifier = Modifier
                                         .size(40.dp)
                                         .clip(CircleShape)
-                                        .background(JapaneseCrimson.copy(alpha = 0.2f)),
+                                        .background(JapaneseCrimson.copy(alpha = 0.18f)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
@@ -193,281 +238,282 @@ fun QuizScreen(
                                 Column {
                                     Text(
                                         text = "JLPT N3 Quiz Arena",
-                                        style = MaterialTheme.typography.headlineSmall,
+                                        style = MaterialTheme.typography.titleLarge,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
-                                        text = "Interactive Drills & Fast Recall",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = JapaneseCrimson,
-                                        fontWeight = FontWeight.Bold
+                                        text = "Interactive Mastery & Spaced Testing",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
-                            Text(
-                                text = "Test recognition, listening comprehension, furigana readings, and sentence context to earn XP and level up your mastery.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            }
 
-            // Scope & Lesson Filter
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            if (history.isNotEmpty()) {
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = MaterialTheme.colorScheme.surface,
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .clickable { showHistoryDialog = !showHistoryDialog }
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.History,
+                                            contentDescription = "History",
+                                            tint = JapaneseIndigo,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Text(
+                                            text = "${history.size} Runs",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = JapaneseIndigo
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Quick Recommendation Pill
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                            border = BorderStroke(1.dp, StreakOrange.copy(alpha = 0.3f)),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.FilterList,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Text(
-                                text = "Study Scope / Lesson Filter",
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Bolt,
+                                        contentDescription = null,
+                                        tint = StreakOrange,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Column {
+                                        Text(
+                                            text = "Recommended Daily Challenge",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = StreakOrange
+                                        )
+                                        Text(
+                                            text = "True / False Blitz (○/× Fast Recall)",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
 
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(horizontal = 2.dp)
-                    ) {
-                        item {
-                            FilterChip(
-                                selected = selectedLessonFilter == 0,
-                                onClick = { selectedLessonFilter = 0 },
-                                label = { Text("All JLPT N3", fontWeight = FontWeight.Bold) },
-                                leadingIcon = {
-                                    Icon(Icons.Default.School, contentDescription = null, modifier = Modifier.size(16.dp))
-                                },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = JapaneseIndigo,
-                                    selectedLabelColor = Color.White,
-                                    selectedLeadingIconColor = Color.White
-                                )
-                            )
-                        }
-
-                        item {
-                            FilterChip(
-                                selected = selectedLessonFilter == -1,
-                                onClick = { selectedLessonFilter = -1 },
-                                label = { Text("⚠️ Weak Words Only", fontWeight = FontWeight.Bold) },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(16.dp))
-                                },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = JapaneseCrimson,
-                                    selectedLabelColor = Color.White,
-                                    selectedLeadingIconColor = Color.White
-                                )
-                            )
-                        }
-
-                        items((1..29).toList()) { lessonNum ->
-                            val labelText = if (lessonNum <= 21) "Lesson $lessonNum" else "Part 2 L${lessonNum - 21}"
-                            FilterChip(
-                                selected = selectedLessonFilter == lessonNum,
-                                onClick = { selectedLessonFilter = lessonNum },
-                                label = { Text(labelText, fontWeight = FontWeight.SemiBold) },
-                                leadingIcon = {
-                                    Icon(Icons.Default.MenuBook, contentDescription = null, modifier = Modifier.size(16.dp))
-                                },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = ReviewBlue,
-                                    selectedLabelColor = Color.White,
-                                    selectedLeadingIconColor = Color.White
-                                )
-                            )
+                                Button(
+                                    onClick = { onStartQuiz(QuizType.TRUE_FALSE_DRILL, selectedLessonFilter, selectedQuestionCount) },
+                                    shape = RoundedCornerShape(10.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = StreakOrange)
+                                ) {
+                                    Text("Quick Play", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
                         }
                     }
                 }
             }
+        }
 
-            // Question Count Selector
+        // Question Count Selector
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "Question Count",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    questionCountOptions.forEach { count ->
+                        val isSelected = selectedQuestionCount == count
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (isSelected) JapaneseCrimson else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            border = BorderStroke(
+                                1.dp,
+                                if (isSelected) JapaneseCrimson else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(38.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { selectedQuestionCount = count }
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = "$count Qs",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Scope / Filter Chips (All N3, Starred, Weak, Lessons)
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FilterList,
+                            contentDescription = null,
+                            tint = JapaneseIndigo,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = "Study Scope & Lesson Filter",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    if (selectedLessonFilter != null) {
+                        Text(
+                            text = "Reset Scope",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = JapaneseCrimson,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clickable { selectedLessonFilter = null }
+                        )
+                    }
+                }
+
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(vertical = 2.dp)
+                ) {
+                    item {
+                        FilterChip(
+                            selected = selectedLessonFilter == null,
+                            onClick = { selectedLessonFilter = null },
+                            label = { Text("All JLPT N3", fontWeight = FontWeight.Bold) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = JapaneseIndigo,
+                                selectedLabelColor = Color.White
+                            )
+                        )
+                    }
+                    item {
+                        FilterChip(
+                            selected = selectedLessonFilter == -2,
+                            onClick = { selectedLessonFilter = -2 },
+                            label = { Text("⭐ Starred Only", fontWeight = FontWeight.Bold) },
+                            leadingIcon = {
+                                Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(16.dp))
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = StreakOrange,
+                                selectedLabelColor = Color.White
+                            )
+                        )
+                    }
+                    item {
+                        FilterChip(
+                            selected = selectedLessonFilter == -1,
+                            onClick = { selectedLessonFilter = -1 },
+                            label = { Text("⚠️ Weak Words Only", fontWeight = FontWeight.Bold) },
+                            leadingIcon = {
+                                Icon(Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(16.dp))
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = WeakOrange,
+                                selectedLabelColor = Color.White
+                            )
+                        )
+                    }
+                    items(29) { idx ->
+                        val lessonNum = idx + 1
+                        FilterChip(
+                            selected = selectedLessonFilter == lessonNum,
+                            onClick = { selectedLessonFilter = lessonNum },
+                            label = { Text("Lesson $lessonNum", fontWeight = FontWeight.Medium) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = JapaneseCrimson,
+                                selectedLabelColor = Color.White
+                            )
+                        )
+                    }
+                }
+            }
+        }
+
+        // Quiz Modes Header
+        item {
+            Text(
+                text = "Select Challenge Arena",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+
+        // Grid of 9 Challenge Modes
+        items(QuizType.values()) { type ->
+            QuizModeCard(
+                type = type,
+                filterLesson = selectedLessonFilter,
+                questionCount = selectedQuestionCount,
+                onClick = { onStartQuiz(type, selectedLessonFilter, selectedQuestionCount) }
+            )
+        }
+
+        // Recent History Section
+        if (history.isNotEmpty()) {
             item {
+                Spacer(modifier = Modifier.height(10.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Questions per Round:",
-                        style = MaterialTheme.typography.labelLarge,
+                        text = "Recent Arena Records (${history.size})",
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(5, 10, 15, 20).forEach { count ->
-                            Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = if (questionCount == count) JapaneseCrimson else MaterialTheme.colorScheme.surfaceVariant,
-                                border = if (questionCount == count) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .clickable { questionCount = count }
-                                    .testTag("quiz_count_$count")
-                            ) {
-                                Text(
-                                    text = "$count Qs",
-                                    color = if (questionCount == count) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                                )
-                            }
-                        }
-                    }
                 }
             }
 
-            // Challenge Modes Section
-            item {
-                Text(
-                    text = "Select Challenge Mode",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-
-            // 1. Kanji to Meaning
-            item {
-                QuizModeCard(
-                    title = QuizType.KANJI_TO_MEANING.displayName,
-                    description = QuizType.KANJI_TO_MEANING.description,
-                    icon = Icons.Default.Translate,
-                    badge = QuizType.KANJI_TO_MEANING.badge,
-                    badgeColor = ReviewBlue,
-                    onClick = {
-                        val filter = if (selectedLessonFilter == 0) null else selectedLessonFilter
-                        quizViewModel.startQuiz(QuizType.KANJI_TO_MEANING, filter, questionCount)
-                    }
-                )
-            }
-
-            // 2. Meaning to Kanji
-            item {
-                QuizModeCard(
-                    title = QuizType.MEANING_TO_KANJI.displayName,
-                    description = QuizType.MEANING_TO_KANJI.description,
-                    icon = Icons.Default.Psychology,
-                    badge = QuizType.MEANING_TO_KANJI.badge,
-                    badgeColor = JapaneseCrimson,
-                    onClick = {
-                        val filter = if (selectedLessonFilter == 0) null else selectedLessonFilter
-                        quizViewModel.startQuiz(QuizType.MEANING_TO_KANJI, filter, questionCount)
-                    }
-                )
-            }
-
-            // 3. Furigana Reading Challenge
-            item {
-                QuizModeCard(
-                    title = QuizType.READING_CHALLENGE.displayName,
-                    description = QuizType.READING_CHALLENGE.description,
-                    icon = Icons.Default.Bolt,
-                    badge = QuizType.READING_CHALLENGE.badge,
-                    badgeColor = MasteredGreen,
-                    onClick = {
-                        val filter = if (selectedLessonFilter == 0) null else selectedLessonFilter
-                        quizViewModel.startQuiz(QuizType.READING_CHALLENGE, filter, questionCount)
-                    }
-                )
-            }
-
-            // 4. Listening Audio Recall
-            item {
-                QuizModeCard(
-                    title = QuizType.LISTENING_CHALLENGE.displayName,
-                    description = QuizType.LISTENING_CHALLENGE.description,
-                    icon = Icons.Default.Headphones,
-                    badge = QuizType.LISTENING_CHALLENGE.badge,
-                    badgeColor = JapaneseIndigo,
-                    onClick = {
-                        val filter = if (selectedLessonFilter == 0) null else selectedLessonFilter
-                        quizViewModel.startQuiz(QuizType.LISTENING_CHALLENGE, filter, questionCount)
-                    }
-                )
-            }
-
-            // 5. Sentence Cloze Fill-in
-            item {
-                QuizModeCard(
-                    title = QuizType.SENTENCE_CLOZE.displayName,
-                    description = QuizType.SENTENCE_CLOZE.description,
-                    icon = Icons.Default.MenuBook,
-                    badge = QuizType.SENTENCE_CLOZE.badge,
-                    badgeColor = StreakOrange,
-                    onClick = {
-                        val filter = if (selectedLessonFilter == 0) null else selectedLessonFilter
-                        quizViewModel.startQuiz(QuizType.SENTENCE_CLOZE, filter, questionCount)
-                    }
-                )
-            }
-
-            // 6. Speed Test (10s)
-            item {
-                QuizModeCard(
-                    title = QuizType.SPEED_TEST.displayName,
-                    description = QuizType.SPEED_TEST.description,
-                    icon = Icons.Default.Speed,
-                    badge = QuizType.SPEED_TEST.badge,
-                    badgeColor = WeakOrange,
-                    onClick = {
-                        val filter = if (selectedLessonFilter == 0) null else selectedLessonFilter
-                        quizViewModel.startQuiz(QuizType.SPEED_TEST, filter, questionCount)
-                    }
-                )
-            }
-
-            // Recent Quiz History Section
-            if (quizHistory.isNotEmpty()) {
-                item {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.History,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Text(
-                                text = "Recent Quiz Arena History",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
-                }
-
-                items(quizHistory.take(5)) { history ->
-                    QuizHistoryItem(history = history)
-                }
+            items(history.take(5)) { item ->
+                QuizHistoryItem(history = item)
             }
         }
     }
@@ -475,42 +521,52 @@ fun QuizScreen(
 
 @Composable
 private fun QuizModeCard(
-    title: String,
-    description: String,
-    icon: ImageVector,
-    badge: String,
-    badgeColor: Color,
+    type: QuizType,
+    filterLesson: Int?,
+    questionCount: Int,
     onClick: () -> Unit
 ) {
+    val (icon, color) = when (type) {
+        QuizType.KANJI_MASTERY -> Icons.Default.Psychology to JapaneseCrimson
+        QuizType.KANJI_TO_MEANING -> Icons.Default.Translate to JapaneseIndigo
+        QuizType.MEANING_TO_KANJI -> Icons.Default.School to ReviewBlue
+        QuizType.READING_CHALLENGE -> Icons.Default.MenuBook to WeakOrange
+        QuizType.LISTENING_CHALLENGE -> Icons.Default.Headphones to JapaneseIndigo
+        QuizType.SENTENCE_CLOZE -> Icons.Default.MenuBook to MasteredGreen
+        QuizType.TRUE_FALSE_DRILL -> Icons.Default.Bolt to StreakOrange
+        QuizType.SPEED_TEST -> Icons.Default.Speed to JapaneseCrimson
+        QuizType.BOOKMARKED_DRILL -> Icons.Default.Star to StreakOrange
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(18.dp))
             .clickable { onClick() }
-            .testTag("quiz_mode_${title.replace(" ", "_").replace("→", "to")}"),
-        shape = RoundedCornerShape(20.dp),
+            .testTag("quiz_mode_${type.name.lowercase()}"),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(18.dp),
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Box(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(badgeColor.copy(alpha = 0.15f)),
+                    .background(color.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
-                    contentDescription = title,
-                    tint = badgeColor,
+                    contentDescription = type.displayName,
+                    tint = color,
                     modifier = Modifier.size(26.dp)
                 )
             }
@@ -521,18 +577,18 @@ private fun QuizModeCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = title,
+                        text = type.displayName,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Surface(
                         shape = RoundedCornerShape(6.dp),
-                        color = badgeColor.copy(alpha = 0.15f)
+                        color = color.copy(alpha = 0.15f)
                     ) {
                         Text(
-                            text = badge,
-                            color = badgeColor,
+                            text = type.badge,
+                            color = color,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -541,11 +597,20 @@ private fun QuizModeCard(
                 }
                 Spacer(modifier = Modifier.height(3.dp))
                 Text(
-                    text = description,
+                    text = type.description,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
+
+            Icon(
+                imageVector = Icons.Default.PlayArrow,
+                contentDescription = "Start",
+                tint = color,
+                modifier = Modifier.size(24.dp)
+            )
         }
     }
 }
@@ -553,12 +618,16 @@ private fun QuizModeCard(
 @Composable
 private fun ActiveQuizView(
     state: QuizState,
+    isSpeaking: Boolean,
     onSelectOption: (Int) -> Unit,
     onUseFiftyFifty: () -> Unit,
+    onSwapQuestion: () -> Unit,
     onToggleClue: () -> Unit,
+    onTogglePause: () -> Unit,
+    onToggleAudioSpeed: () -> Unit,
     onToggleBookmark: () -> Unit,
     onNext: () -> Unit,
-    onSpeak: (String) -> Unit,
+    onSpeak: (String, Float?) -> Unit,
     onExit: () -> Unit
 ) {
     val currentQuestion = state.questions.getOrNull(state.currentIndex) ?: return
@@ -566,8 +635,20 @@ private fun ActiveQuizView(
         targetValue = (state.currentIndex + 1).toFloat() / state.questions.size.toFloat(),
         label = "quiz_progress"
     )
-    val maxTimerSec = if (state.quizType == QuizType.SPEED_TEST) 10 else 15
+    val maxTimerSec = if (state.quizType.isSpeed) 10 else 15
     val timerFraction = (state.remainingSeconds.toFloat() / maxTimerSec.toFloat()).coerceIn(0f, 1f)
+
+    // Sound wave pulse animation when TTS is playing
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 1.0f,
+        targetValue = if (isSpeaking) 1.25f else 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(400, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse_scale"
+    )
 
     LazyColumn(
         modifier = Modifier
@@ -577,7 +658,7 @@ private fun ActiveQuizView(
         contentPadding = PaddingValues(bottom = 90.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Top status row (Exit, Counter, Streak, Score, Lifelines)
+        // Top status row (Exit, Counter, Pause, Streak Combo, Score)
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(
@@ -585,13 +666,26 @@ private fun ActiveQuizView(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = onExit) {
-                        Icon(Icons.Default.Close, contentDescription = "Exit Quiz", tint = MaterialTheme.colorScheme.onSurface)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        IconButton(onClick = onExit, modifier = Modifier.size(36.dp)) {
+                            Icon(Icons.Default.Close, contentDescription = "Exit Quiz", tint = MaterialTheme.colorScheme.onSurface)
+                        }
+
+                        IconButton(onClick = onTogglePause, modifier = Modifier.size(36.dp)) {
+                            Icon(
+                                imageVector = if (state.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                contentDescription = if (state.isPaused) "Resume" else "Pause",
+                                tint = if (state.isPaused) StreakOrange else MaterialTheme.colorScheme.outline
+                            )
+                        }
                     }
 
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "${state.lessonTitle}",
+                            text = state.lessonTitle,
                             style = MaterialTheme.typography.labelSmall,
                             color = JapaneseCrimson,
                             fontWeight = FontWeight.Bold
@@ -603,11 +697,27 @@ private fun ActiveQuizView(
                         )
                     }
 
-                    // Score & Streak Pills
+                    // Score & Streak Badges
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
+                        // Combo Multiplier Badge
+                        if (state.comboMultiplier > 1) {
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = JapaneseCrimson
+                            ) {
+                                Text(
+                                    text = "${state.comboMultiplier}x XP",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 11.sp,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
+
                         // Streak Badge
                         Surface(
                             shape = RoundedCornerShape(12.dp),
@@ -660,7 +770,7 @@ private fun ActiveQuizView(
                     }
                 }
 
-                // Question Progress
+                // Question Progress Indicator
                 LinearProgressIndicator(
                     progress = { progress },
                     modifier = Modifier
@@ -682,15 +792,16 @@ private fun ActiveQuizView(
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Speed,
+                            imageVector = if (state.isPaused) Icons.Default.Timer else Icons.Default.Speed,
                             contentDescription = null,
-                            tint = if (state.remainingSeconds <= 3) JapaneseCrimson else MaterialTheme.colorScheme.outline,
+                            tint = if (state.isPaused) StreakOrange else if (state.remainingSeconds <= 3) JapaneseCrimson else MaterialTheme.colorScheme.outline,
                             modifier = Modifier.size(14.dp)
                         )
                         Text(
-                            text = "Timer",
+                            text = if (state.isPaused) "PAUSED" else "Time Remaining",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.outline
+                            fontWeight = if (state.isPaused) FontWeight.Bold else FontWeight.Normal,
+                            color = if (state.isPaused) StreakOrange else MaterialTheme.colorScheme.outline
                         )
                     }
                     Text(
@@ -700,6 +811,7 @@ private fun ActiveQuizView(
                         color = if (state.remainingSeconds <= 3) JapaneseCrimson else MaterialTheme.colorScheme.primary
                     )
                 }
+
                 LinearProgressIndicator(
                     progress = { timerFraction },
                     modifier = Modifier
@@ -710,64 +822,117 @@ private fun ActiveQuizView(
                     trackColor = MaterialTheme.colorScheme.surfaceVariant
                 )
 
-                // Lifelines Bar (50/50 and Clue Hint)
+                // Lifelines Bar (50:50, Radical Hint, Swap Question, Audio Speed)
                 if (!state.isAnswerSubmitted) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // 50/50 Lifeline Button
+                        // Audio Speed Switcher (1.0x / 0.75x Slow)
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = if (state.hasUsedFiftyFifty) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) else JapaneseIndigo.copy(alpha = 0.12f),
-                            border = BorderStroke(1.dp, if (state.hasUsedFiftyFifty) Color.Transparent else JapaneseIndigo.copy(alpha = 0.3f)),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
-                                .clickable(enabled = !state.hasUsedFiftyFifty) { onUseFiftyFifty() }
+                                .clickable { onToggleAudioSpeed() }
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
+                                Icon(Icons.Default.VolumeUp, contentDescription = null, modifier = Modifier.size(13.dp), tint = JapaneseIndigo)
                                 Text(
-                                    text = "50:50",
+                                    text = if (state.speechRate == 1.0f) "1.0x Audio" else "0.75x Slow",
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (state.hasUsedFiftyFifty) MaterialTheme.colorScheme.outline else JapaneseIndigo
+                                    color = JapaneseIndigo
                                 )
                             }
                         }
 
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // Clue / Hint Button
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = if (state.showClue) StreakOrange.copy(alpha = 0.2f) else StreakOrange.copy(alpha = 0.12f),
-                            border = BorderStroke(1.dp, StreakOrange.copy(alpha = 0.3f)),
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { onToggleClue() }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            // 50:50 Lifeline Button
+                            if (!currentQuestion.isTrueFalse) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (state.hasUsedFiftyFifty) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) else JapaneseIndigo.copy(alpha = 0.12f),
+                                    border = BorderStroke(1.dp, if (state.hasUsedFiftyFifty) Color.Transparent else JapaneseIndigo.copy(alpha = 0.3f)),
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable(enabled = !state.hasUsedFiftyFifty) { onUseFiftyFifty() }
+                                ) {
+                                    Text(
+                                        text = "50:50",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (state.hasUsedFiftyFifty) MaterialTheme.colorScheme.outline else JapaneseIndigo,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+
+                            // Question Swap Lifeline
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (state.hasUsedSwap) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) else ReviewBlue.copy(alpha = 0.12f),
+                                border = BorderStroke(1.dp, if (state.hasUsedSwap) Color.Transparent else ReviewBlue.copy(alpha = 0.3f)),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable(enabled = !state.hasUsedSwap) { onSwapQuestion() }
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Lightbulb,
-                                    contentDescription = "Hint",
-                                    tint = StreakOrange,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Text(
-                                    text = if (state.showClue) "Hide Hint" else "Hint",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = StreakOrange
-                                )
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.SwapHoriz,
+                                        contentDescription = "Swap",
+                                        tint = if (state.hasUsedSwap) MaterialTheme.colorScheme.outline else ReviewBlue,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Text(
+                                        text = "Swap",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (state.hasUsedSwap) MaterialTheme.colorScheme.outline else ReviewBlue
+                                    )
+                                }
+                            }
+
+                            // Hint Button
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (state.showClue) StreakOrange.copy(alpha = 0.2f) else StreakOrange.copy(alpha = 0.12f),
+                                border = BorderStroke(1.dp, StreakOrange.copy(alpha = 0.3f)),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { onToggleClue() }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Lightbulb,
+                                        contentDescription = "Hint",
+                                        tint = StreakOrange,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Text(
+                                        text = if (state.showClue) "Hide Clue" else "Clue",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = StreakOrange
+                                    )
+                                }
                             }
                         }
                     }
@@ -775,7 +940,7 @@ private fun ActiveQuizView(
             }
         }
 
-        // Hint Card Visibility
+        // Hint Card
         if (state.showClue && !state.isAnswerSubmitted) {
             item {
                 Surface(
@@ -796,7 +961,7 @@ private fun ActiveQuizView(
                             modifier = Modifier.size(18.dp)
                         )
                         Text(
-                            text = "Part of Speech: ${currentQuestion.card.partOfSpeech.ifBlank { "Noun / Expression" }} • ${currentQuestion.card.sectionTitle}",
+                            text = currentQuestion.clueHint.ifBlank { "Part of Speech: ${currentQuestion.card.partOfSpeech.ifBlank { "Noun / Expression" }} • ${currentQuestion.card.sectionTitle}" },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Medium
@@ -818,45 +983,66 @@ private fun ActiveQuizView(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(20.dp),
+                        .padding(22.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     if (currentQuestion.isListening) {
                         // Audio Challenge Specific Prompt
                         Box(
                             modifier = Modifier
-                                .size(80.dp)
+                                .size(88.dp)
+                                .scale(pulseScale)
                                 .clip(CircleShape)
-                                .background(JapaneseIndigo.copy(alpha = 0.15f))
-                                .clickable { onSpeak(currentQuestion.card.kanji) },
+                                .background(
+                                    Brush.radialGradient(
+                                        listOf(JapaneseIndigo.copy(alpha = 0.25f), JapaneseIndigo.copy(alpha = 0.08f))
+                                    )
+                                )
+                                .clickable { onSpeak(currentQuestion.card.kanji, state.speechRate) },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Hearing,
                                 contentDescription = "Listen",
                                 tint = JapaneseIndigo,
-                                modifier = Modifier.size(44.dp)
+                                modifier = Modifier.size(46.dp)
                             )
                         }
 
                         Text(
-                            text = "Tap to Listen to Pronunciation",
+                            text = "Tap to Listen to Japanese Audio",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = JapaneseIndigo
                         )
 
-                        OutlinedButton(
-                            onClick = { onSpeak(currentQuestion.card.kanji) },
-                            shape = RoundedCornerShape(12.dp)
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.VolumeUp, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Replay Audio")
+                            OutlinedButton(
+                                onClick = { onSpeak(currentQuestion.card.kanji, 1.0f) },
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Icon(Icons.Default.VolumeUp, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("1.0x Normal", fontSize = 12.sp)
+                            }
+
+                            OutlinedButton(
+                                onClick = { onSpeak(currentQuestion.card.kanji, 0.75f) },
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Icon(Icons.Default.Speed, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("0.75x Slow", fontSize = 12.sp)
+                            }
                         }
                     } else {
-                        // Standard / Reading / Cloze Prompt
+                        // Standard / Reading / Cloze / True-False Prompt
                         if (currentQuestion.promptSub.isNotBlank()) {
                             Text(
                                 text = currentQuestion.promptSub,
@@ -869,14 +1055,14 @@ private fun ActiveQuizView(
 
                         Text(
                             text = currentQuestion.prompt,
-                            style = if (currentQuestion.clozeSentence.isNotBlank()) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.headlineLarge.copy(fontSize = 32.sp),
+                            style = if (currentQuestion.clozeSentence.isNotBlank() || currentQuestion.isTrueFalse) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.headlineLarge.copy(fontSize = 32.sp),
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center,
                             color = MaterialTheme.colorScheme.onSurface
                         )
 
                         IconButton(
-                            onClick = { onSpeak(currentQuestion.card.kanji) },
+                            onClick = { onSpeak(currentQuestion.card.kanji, state.speechRate) },
                             modifier = Modifier.size(36.dp)
                         ) {
                             Icon(
@@ -890,7 +1076,7 @@ private fun ActiveQuizView(
             }
         }
 
-        // 4 Options Grid/List
+        // 4 Options Grid/List or True/False Buttons
         item {
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -900,10 +1086,11 @@ private fun ActiveQuizView(
                     val isSelected = state.selectedOptionIndex == index
                     val isCorrectAnswer = option == currentQuestion.correctAnswer
                     val isEliminated = state.eliminatedOptionIndices.contains(index)
+                    val letterPrefix = if (currentQuestion.isTrueFalse) "" else "${('A' + index)}. "
 
                     val backgroundColor by animateColorAsState(
                         targetValue = when {
-                            isEliminated -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                            isEliminated -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
                             !state.isAnswerSubmitted -> MaterialTheme.colorScheme.surface
                             isCorrectAnswer -> MasteredGreen.copy(alpha = 0.15f)
                             isSelected -> JapaneseCrimson.copy(alpha = 0.15f)
@@ -917,7 +1104,7 @@ private fun ActiveQuizView(
                         !state.isAnswerSubmitted && isSelected -> MaterialTheme.colorScheme.primary
                         state.isAnswerSubmitted && isCorrectAnswer -> MasteredGreen
                         state.isAnswerSubmitted && isSelected -> JapaneseCrimson
-                        else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                        else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
                     }
 
                     Card(
@@ -925,7 +1112,7 @@ private fun ActiveQuizView(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(14.dp))
                             .border(1.5.dp, borderColor, RoundedCornerShape(14.dp))
-                            .clickable(enabled = !state.isAnswerSubmitted && !isEliminated) {
+                            .clickable(enabled = !state.isAnswerSubmitted && !isEliminated && !state.isPaused) {
                                 onSelectOption(index)
                             }
                             .testTag("quiz_option_$index"),
@@ -939,13 +1126,33 @@ private fun ActiveQuizView(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text(
-                                text = if (isEliminated) "— Eliminated (50:50) —" else option,
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (isEliminated) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface,
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 modifier = Modifier.weight(1f)
-                            )
+                            ) {
+                                if (letterPrefix.isNotEmpty() && !isEliminated) {
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = if (state.isAnswerSubmitted && isCorrectAnswer) MasteredGreen else if (state.isAnswerSubmitted && isSelected) JapaneseCrimson else MaterialTheme.colorScheme.surfaceVariant
+                                    ) {
+                                        Text(
+                                            text = letterPrefix.trim(),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (state.isAnswerSubmitted && (isCorrectAnswer || isSelected)) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                        )
+                                    }
+                                }
+
+                                Text(
+                                    text = if (isEliminated) "— Eliminated (50:50) —" else option,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (isEliminated) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface
+                                )
+                            }
 
                             if (state.isAnswerSubmitted && !isEliminated) {
                                 if (isCorrectAnswer) {
@@ -1001,7 +1208,7 @@ private fun ActiveQuizView(
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Text(
-                                    text = if (currentQuestion.isCorrect) "Correct! +10 XP" else "Review & Insight",
+                                    text = if (currentQuestion.isCorrect) "Correct! +${10 * state.comboMultiplier} XP" else "Review & Study Insight",
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold,
                                     color = if (currentQuestion.isCorrect) MasteredGreen else JapaneseCrimson
@@ -1026,7 +1233,7 @@ private fun ActiveQuizView(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column {
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = "${currentQuestion.card.kanji} 【${currentQuestion.card.reading}】",
                                     style = MaterialTheme.typography.titleMedium,
@@ -1041,11 +1248,16 @@ private fun ActiveQuizView(
                                 )
                             }
 
-                            IconButton(
-                                onClick = { onSpeak(currentQuestion.card.kanji) },
-                                modifier = Modifier.size(32.dp)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Icon(Icons.Default.VolumeUp, contentDescription = "Pronounce", tint = JapaneseIndigo)
+                                IconButton(
+                                    onClick = { onSpeak(currentQuestion.card.kanji, 1.0f) },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(Icons.Default.VolumeUp, contentDescription = "Pronounce", tint = JapaneseIndigo)
+                                }
                             }
                         }
 
@@ -1108,6 +1320,7 @@ private fun QuizResultView(
     state: QuizState,
     onRestart: () -> Unit,
     onRetryMissed: () -> Unit,
+    onBookmarkAllMissed: () -> Unit,
     onToggleBookmark: (Long, Boolean) -> Unit,
     onSpeak: (String) -> Unit,
     onExit: () -> Unit
@@ -1116,6 +1329,23 @@ private fun QuizResultView(
     val total = state.questions.size
     val percentage = if (total > 0) (score * 100) / total else 0
     val missedQuestions = state.questions.filter { !it.isCorrect }
+    val correctQuestions = state.questions.filter { it.isCorrect }
+
+    var selectedReviewTab by remember { mutableIntStateOf(0) } // 0 = All, 1 = Missed, 2 = Correct
+    var hasBookmarkedMissed by remember { mutableStateOf(false) }
+
+    val displayedQuestions = when (selectedReviewTab) {
+        1 -> missedQuestions
+        2 -> correctQuestions
+        else -> state.questions
+    }
+
+    val (tierTitle, tierBadgeColor) = when {
+        percentage == 100 -> "🏆 Grandmaster JLPT N3 Recall!" to MasteredGreen
+        percentage >= 80 -> "🥇 Outstanding JLPT Mastery!" to JapaneseIndigo
+        percentage >= 60 -> "🥈 Strong Practice Session!" to ReviewBlue
+        else -> "🥉 Good Effort — Drill Missed Words" to WeakOrange
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -1125,6 +1355,7 @@ private fun QuizResultView(
         contentPadding = PaddingValues(bottom = 90.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // Result Summary Card
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -1144,21 +1375,19 @@ private fun QuizResultView(
                         modifier = Modifier
                             .size(76.dp)
                             .clip(CircleShape)
-                            .background(
-                                if (percentage >= 80) MasteredGreen.copy(alpha = 0.15f) else WeakOrange.copy(alpha = 0.15f)
-                            ),
+                            .background(tierBadgeColor.copy(alpha = 0.15f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.EmojiEvents,
                             contentDescription = null,
-                            tint = if (percentage >= 80) MasteredGreen else WeakOrange,
+                            tint = tierBadgeColor,
                             modifier = Modifier.size(44.dp)
                         )
                     }
 
                     Text(
-                        text = if (percentage == 100) "🌟 Perfect JLPT N3 Recall!" else if (percentage >= 80) "Outstanding Mastery!" else "Great Practice Session!",
+                        text = tierTitle,
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -1166,12 +1395,12 @@ private fun QuizResultView(
                     )
 
                     Text(
-                        text = "Score: $score / $total ($percentage%) • ${state.durationSeconds}s time elapsed",
+                        text = "Score: $score / $total ($percentage%) • ${state.durationSeconds}s elapsed",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
-                    // XP and Combo Breakdown
+                    // XP and Performance Metrics
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1186,7 +1415,7 @@ private fun QuizResultView(
                                 color = JapaneseCrimson
                             )
                             Text(
-                                text = "Experience Earned",
+                                text = "XP Earned",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.outline
                             )
@@ -1208,7 +1437,7 @@ private fun QuizResultView(
 
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = "${percentage}%",
+                                text = "$percentage%",
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = if (percentage >= 80) MasteredGreen else JapaneseIndigo
@@ -1221,27 +1450,79 @@ private fun QuizResultView(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(6.dp))
+                    // SQLite Database reinforcement notice
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MasteredGreen.copy(alpha = 0.08f),
+                        border = BorderStroke(1.dp, MasteredGreen.copy(alpha = 0.2f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(Icons.Default.DoneAll, contentDescription = null, tint = MasteredGreen, modifier = Modifier.size(16.dp))
+                            Text(
+                                text = "SRS Spaced Repetition stats updated for $total cards in SQLite database",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MasteredGreen,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
 
                     // Action buttons
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // Missed Words Drill Button (If any missed)
+                        // Missed Words Drill & Bookmark All Missed
                         if (missedQuestions.isNotEmpty()) {
-                            Button(
-                                onClick = onRetryMissed,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(48.dp)
-                                    .testTag("retry_missed_btn"),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = StreakOrange)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Icon(Icons.Default.Replay, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Drill Missed Words (${missedQuestions.size})", fontWeight = FontWeight.Bold)
+                                Button(
+                                    onClick = onRetryMissed,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(48.dp)
+                                        .testTag("retry_missed_btn"),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = StreakOrange)
+                                ) {
+                                    Icon(Icons.Default.Replay, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Drill Missed (${missedQuestions.size})", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                }
+
+                                OutlinedButton(
+                                    onClick = {
+                                        onBookmarkAllMissed()
+                                        hasBookmarkedMissed = true
+                                    },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(48.dp),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (hasBookmarkedMissed) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                        tint = StreakOrange
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = if (hasBookmarkedMissed) "Saved!" else "Bookmark Missed",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                        color = StreakOrange
+                                    )
+                                }
                             }
                         }
 
@@ -1279,16 +1560,32 @@ private fun QuizResultView(
             }
         }
 
+        // Review Tabs (All, Missed, Correct)
         item {
-            Text(
-                text = "Question Review & Explanations (${state.questions.size})",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            TabRow(
+                selectedTabIndex = selectedReviewTab,
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = JapaneseCrimson
+            ) {
+                Tab(
+                    selected = selectedReviewTab == 0,
+                    onClick = { selectedReviewTab = 0 },
+                    text = { Text("All (${state.questions.size})", fontWeight = FontWeight.Bold) }
+                )
+                Tab(
+                    selected = selectedReviewTab == 1,
+                    onClick = { selectedReviewTab = 1 },
+                    text = { Text("Missed (${missedQuestions.size})", fontWeight = FontWeight.Bold, color = if (missedQuestions.isNotEmpty()) JapaneseCrimson else MaterialTheme.colorScheme.outline) }
+                )
+                Tab(
+                    selected = selectedReviewTab == 2,
+                    onClick = { selectedReviewTab = 2 },
+                    text = { Text("Correct (${correctQuestions.size})", fontWeight = FontWeight.Bold, color = MasteredGreen) }
+                )
+            }
         }
 
-        items(state.questions) { q ->
+        items(displayedQuestions) { q ->
             OutlinedCard(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -1328,12 +1625,29 @@ private fun QuizResultView(
                             }
                         }
 
-                        Icon(
-                            imageVector = if (q.isCorrect) Icons.Default.Check else Icons.Default.Close,
-                            contentDescription = null,
-                            tint = if (q.isCorrect) MasteredGreen else JapaneseCrimson,
-                            modifier = Modifier.size(22.dp)
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            IconButton(
+                                onClick = { onToggleBookmark(q.card.id, q.card.isBookmarked) },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (q.card.isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                                    contentDescription = "Bookmark",
+                                    tint = if (q.card.isBookmarked) StreakOrange else MaterialTheme.colorScheme.outline,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+
+                            Icon(
+                                imageVector = if (q.isCorrect) Icons.Default.Check else Icons.Default.Close,
+                                contentDescription = null,
+                                tint = if (q.isCorrect) MasteredGreen else JapaneseCrimson,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
                     }
 
                     Text(
@@ -1401,6 +1715,12 @@ private fun QuizHistoryItem(history: QuizHistory) {
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = if (percent >= 80) MasteredGreen else JapaneseCrimson
+                )
+                Text(
+                    text = "+${history.xpEarned} XP",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = JapaneseCrimson,
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
