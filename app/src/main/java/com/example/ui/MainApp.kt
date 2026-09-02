@@ -63,6 +63,7 @@ import com.example.ui.navigation.Screen
 import com.example.ui.screens.FlashcardStudyScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.ProfileScreen
+import com.example.ui.screens.QuizHistoryScreen
 import com.example.ui.screens.QuizScreen
 import com.example.ui.screens.StatisticsScreen
 import com.example.ui.screens.VocabBrowseScreen
@@ -107,7 +108,7 @@ fun MainApp(
             Screen.Profile
         )
 
-        val isFullScreenStudy = currentRoute == Screen.Study.route
+        val isFullScreenStudy = currentRoute == Screen.Study.route || currentRoute == Screen.QuizHistory.route
         val systemIsDark = isSystemInDarkTheme()
         val isCurrentlyDark = when (themeSettings.themeMode) {
             ThemeMode.SYSTEM -> systemIsDark
@@ -121,84 +122,67 @@ fun MainApp(
                     val profile by vocabViewModel.userProfile.collectAsState()
                     Surface(
                         color = MaterialTheme.colorScheme.background,
+                        border = androidx.compose.foundation.BorderStroke(
+                            0.5.dp,
+                            MaterialTheme.colorScheme.outline.copy(alpha = 0.08f)
+                        ),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 12.dp),
+                                .padding(horizontal = 20.dp, vertical = 14.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Left: Clean Title & JLPT Level
+                            // Left: Beautiful & Clean App Title + Subtitle
                             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        text = when (currentRoute) {
+                                            Screen.Home.route -> "KotoKanji こと漢字"
+                                            Screen.Browse.route -> "Word Library 単語帳"
+                                            Screen.Stats.route -> "Progress & Analytics 統計"
+                                            Screen.Quiz.route -> "Quiz Arena 試練場"
+                                            Screen.Profile.route -> "Student Profile プロフィール"
+                                            else -> "KotoKanji こと漢字"
+                                        },
+                                        style = MaterialTheme.typography.titleMedium.copy(
+                                            fontSize = 19.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            letterSpacing = 0.2.sp
+                                        ),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
                                 Text(
-                                    text = when (currentRoute) {
-                                        Screen.Home.route -> "KotoKanji こと漢字"
-                                        Screen.Browse.route -> "N3 Word Library"
-                                        Screen.Stats.route -> "Statistics"
-                                        Screen.Quiz.route -> "Quiz Arena"
-                                        Screen.Profile.route -> "Profile"
-                                        else -> "KotoKanji"
-                                    },
-                                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = "JLPT N3 Myanmar • Offline Study",
+                                    text = "JLPT N3 Myanmar • Japanese Flashcards",
                                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                                    color = MaterialTheme.colorScheme.outline
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
                                 )
                             }
 
-                            // Right: Theme Mode Quick Toggle & Add Button
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            // Right: Minimalist, elegant JLPT Level Indicator Badge
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                                border = androidx.compose.foundation.BorderStroke(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                                )
                             ) {
-                                // Quick Dark / Light Mode Toggle Button
-                                IconButton(
-                                    onClick = {
-                                        vocabViewModel.toggleDarkMode(isCurrentlyDark)
-                                    },
-                                    modifier = Modifier
-                                        .size(38.dp)
-                                        .background(
-                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                            CircleShape
-                                        )
-                                        .testTag("app_bar_dark_mode_toggle_btn")
-                                ) {
-                                    Crossfade(targetState = isCurrentlyDark, label = "theme_icon_crossfade") { dark ->
-                                        Icon(
-                                            imageVector = if (dark) Icons.Default.LightMode else Icons.Default.DarkMode,
-                                            contentDescription = if (dark) "Switch to Light Mode" else "Switch to Dark Mode",
-                                            tint = if (dark) Color(0xFFFFD54F) else MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-                                }
-
-                                if (currentRoute == Screen.Home.route || currentRoute == Screen.Browse.route) {
-                                    IconButton(
-                                        onClick = { showAddCustomDialog = true },
-                                        modifier = Modifier
-                                            .size(38.dp)
-                                            .background(
-                                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
-                                                CircleShape
-                                            )
-                                            .testTag("app_bar_add_btn")
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Add,
-                                            contentDescription = "Add Card",
-                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-                                }
+                                Text(
+                                    text = "JLPT ${profile?.targetJlptLevel ?: "N3"}",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp
+                                    ),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                )
                             }
                         }
                     }
@@ -324,12 +308,35 @@ fun MainApp(
                             onNavigateToBrowse = { filter ->
                                 vocabViewModel.setFilter(filter)
                                 navController.navigate(Screen.Browse.route)
+                            },
+                            onNavigateToQuizHistory = {
+                                navController.navigate(Screen.QuizHistory.route)
                             }
                         )
                     }
 
                     composable(Screen.Quiz.route) {
-                        QuizScreen(quizViewModel = quizViewModel)
+                        QuizScreen(
+                            quizViewModel = quizViewModel,
+                            onNavigateToHistory = {
+                                navController.navigate(Screen.QuizHistory.route)
+                            }
+                        )
+                    }
+
+                    composable(Screen.QuizHistory.route) {
+                        QuizHistoryScreen(
+                            quizViewModel = quizViewModel,
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            },
+                            onStartQuiz = { quizType ->
+                                quizViewModel.startQuiz(quizType = quizType)
+                                navController.navigate(Screen.Quiz.route) {
+                                    popUpTo(Screen.Quiz.route) { inclusive = true }
+                                }
+                            }
+                        )
                     }
 
                     composable(Screen.Profile.route) {

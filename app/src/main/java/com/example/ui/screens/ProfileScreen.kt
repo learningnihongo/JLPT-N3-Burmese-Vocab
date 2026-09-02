@@ -1,6 +1,13 @@
 package com.example.ui.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,33 +21,41 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -49,24 +64,39 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import coil.compose.AsyncImage
 import com.example.data.model.Badge
 import com.example.ui.components.AppThemeSettingsCard
 import com.example.ui.components.BadgeDetailDialog
 import com.example.ui.components.DailyReminderSettingsCard
 import com.example.ui.components.TrophyShowcaseCard
+import com.example.ui.components.VoiceSettingsCard
 import com.example.ui.components.WeeklyMasteryProgressChartCard
 import com.example.ui.theme.JapaneseCrimson
 import com.example.ui.theme.JapaneseIndigo
 import com.example.ui.theme.MasteredGreen
-import com.example.ui.theme.ReviewBlue
+import com.example.ui.theme.PolishOutlineVariant
 import com.example.ui.theme.SakuraPinkDark
-import com.example.ui.theme.WeakOrange
+import com.example.ui.theme.StreakOrange
 import com.example.ui.viewmodel.VocabViewModel
+
+private val PRESET_AVATARS = listOf(
+    Pair("🧑‍🏫", "Sensei"),
+    Pair("🌸", "Sakura"),
+    Pair("⚔️", "Samurai"),
+    Pair("🥷", "Shinobi"),
+    Pair("🦊", "Kitsune"),
+    Pair("👺", "Tengu"),
+    Pair("⛩️", "Torii"),
+    Pair("🗻", "Fuji")
+)
 
 @Composable
 fun ProfileScreen(
@@ -80,10 +110,24 @@ fun ProfileScreen(
     val badges by vocabViewModel.allBadges.collectAsState()
     val reminderSettings by vocabViewModel.reminderSettings.collectAsState()
     val themeSettings by vocabViewModel.themeSettings.collectAsState()
+    val voiceSettings by vocabViewModel.voiceSettings.collectAsState()
+    val isSpeaking by vocabViewModel.isSpeaking.collectAsState()
     val weeklyProgressSummary by vocabViewModel.weeklyMasteryVsReviewedStats.collectAsState()
 
     var showEditProfileDialog by remember { mutableStateOf(false) }
     var selectedBadgeForDetail by remember { mutableStateOf<Badge?>(null) }
+
+    // Android Photo Picker launcher for zero-permission gallery selection
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            vocabViewModel.updateAvatar(
+                avatarIndex = profile?.avatarIndex ?: 0,
+                customAvatarUri = uri.toString()
+            )
+        }
+    }
 
     LazyColumn(
         modifier = modifier
@@ -92,7 +136,7 @@ fun ProfileScreen(
         contentPadding = PaddingValues(bottom = 96.dp, top = 20.dp, start = 20.dp, end = 20.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // 1. Clean Profile & Level Header Card
+        // 1. Clean Profile & Level Header Card with Custom User Avatar
         item {
             Card(
                 modifier = Modifier
@@ -100,7 +144,7 @@ fun ProfileScreen(
                     .testTag("profile_header_card"),
                 shape = RoundedCornerShape(22.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 Column(
@@ -109,7 +153,7 @@ fun ProfileScreen(
                         .padding(22.dp),
                     verticalArrangement = Arrangement.spacedBy(18.dp)
                 ) {
-                    // Profile Info & Edit Button
+                    // Profile Info & Avatar + Edit Button
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -117,28 +161,81 @@ fun ProfileScreen(
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
                             modifier = Modifier.weight(1f)
                         ) {
+                            // User Avatar with Photo Upload badge
                             Box(
                                 modifier = Modifier
-                                    .size(54.dp)
+                                    .size(68.dp)
                                     .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primaryContainer),
-                                contentAlignment = Alignment.Center
+                                    .clickable { showEditProfileDialog = true }
                             ) {
-                                Text(
-                                    text = profile?.name?.take(2)?.uppercase() ?: "JL",
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 19.sp
-                                )
+                                if (!profile?.customAvatarUri.isNullOrBlank()) {
+                                    AsyncImage(
+                                        model = profile?.customAvatarUri,
+                                        contentDescription = "User Profile Picture",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(CircleShape)
+                                            .border(2.dp, JapaneseCrimson, CircleShape)
+                                    )
+                                } else {
+                                    val avatarPreset = PRESET_AVATARS.getOrNull(profile?.avatarIndex ?: 0)
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(CircleShape)
+                                            .background(
+                                                Brush.radialGradient(
+                                                    listOf(
+                                                        JapaneseCrimson.copy(alpha = 0.2f),
+                                                        JapaneseIndigo.copy(alpha = 0.15f)
+                                                    )
+                                                )
+                                            )
+                                            .border(2.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), CircleShape),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (avatarPreset != null) {
+                                            Text(
+                                                text = avatarPreset.first,
+                                                fontSize = 32.sp
+                                            )
+                                        } else {
+                                            Text(
+                                                text = profile?.name?.take(2)?.uppercase() ?: "JL",
+                                                color = JapaneseCrimson,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 22.sp
+                                            )
+                                        }
+                                    }
+                                }
+
+                                // Small Camera Edit Badge overlay
+                                Box(
+                                    modifier = Modifier
+                                        .size(22.dp)
+                                        .align(Alignment.BottomEnd)
+                                        .clip(CircleShape)
+                                        .background(JapaneseCrimson),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PhotoCamera,
+                                        contentDescription = "Change Photo",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                }
                             }
 
                             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                                 Text(
                                     text = profile?.name ?: "JLPT Scholar",
-                                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
+                                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 19.sp),
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
@@ -147,12 +244,23 @@ fun ProfileScreen(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
+                                Text(
+                                    text = profile?.levelTitle ?: "Novice Learner",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = JapaneseCrimson
+                                )
                             }
                         }
 
                         IconButton(
                             onClick = { showEditProfileDialog = true },
-                            modifier = Modifier.size(36.dp)
+                            modifier = Modifier
+                                .size(38.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    CircleShape
+                                )
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Edit,
@@ -166,13 +274,12 @@ fun ProfileScreen(
                     // Level & XP Progress
                     val xp = profile?.totalXp ?: 0
                     val currentLevel = profile?.level ?: 1
-                    val nextLevelXp = currentLevel * 200
-                    val currentLevelProgress = (xp % 200).toFloat() / 200f
+                    val currentLevelProgress = (xp % 150).toFloat() / 150f
 
                     Surface(
                         shape = RoundedCornerShape(16.dp),
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.08f)),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.08f)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(
@@ -191,7 +298,7 @@ fun ProfileScreen(
                                     Icon(
                                         imageVector = Icons.Default.Star,
                                         contentDescription = null,
-                                        tint = com.example.ui.theme.StreakOrange,
+                                        tint = StreakOrange,
                                         modifier = Modifier.size(18.dp)
                                     )
                                     Text(
@@ -215,11 +322,11 @@ fun ProfileScreen(
                                     .height(5.dp)
                                     .clip(RoundedCornerShape(50)),
                                 color = MaterialTheme.colorScheme.primary,
-                                trackColor = com.example.ui.theme.PolishOutlineVariant
+                                trackColor = PolishOutlineVariant
                             )
 
                             Text(
-                                text = "${200 - (xp % 200)} XP to Level ${currentLevel + 1}",
+                                text = "${150 - (xp % 150)} XP to Level ${currentLevel + 1}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.outline
                             )
@@ -235,7 +342,7 @@ fun ProfileScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(22.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 Column(
@@ -278,7 +385,7 @@ fun ProfileScreen(
                             title = "Streak",
                             value = "${profile?.currentStreak ?: 1} Days",
                             icon = Icons.Default.LocalFireDepartment,
-                            color = com.example.ui.theme.StreakOrange,
+                            color = StreakOrange,
                             modifier = Modifier.weight(1f)
                         )
                         ProfileStatTile(
@@ -319,7 +426,30 @@ fun ProfileScreen(
             )
         }
 
-        // 4. Appearance & Theme Settings
+        // 5. Voice & Japanese Pronunciation Settings
+        item {
+            VoiceSettingsCard(
+                settings = voiceSettings,
+                isSpeaking = isSpeaking,
+                onUpdateSpeed = { speed ->
+                    vocabViewModel.setVoiceSpeechRate(speed)
+                },
+                onUpdatePitch = { pitch ->
+                    vocabViewModel.setVoicePitch(pitch)
+                },
+                onTogglePhonetic = { phonetic ->
+                    vocabViewModel.setVoicePreferPhonetic(phonetic)
+                },
+                onToggleAutoPlayFlip = { autoFlip ->
+                    vocabViewModel.setVoiceAutoPlayFlip(autoFlip)
+                },
+                onTestVoice = {
+                    vocabViewModel.testVoicePronunciation()
+                }
+            )
+        }
+
+        // 6. Appearance & Theme Settings
         item {
             AppThemeSettingsCard(
                 themeSettings = themeSettings,
@@ -338,7 +468,7 @@ fun ProfileScreen(
             )
         }
 
-        // 5. Digital Trophies & Milestones Showcase
+        // 7. Digital Trophies & Milestones Showcase
         item {
             TrophyShowcaseCard(
                 badges = badges,
@@ -348,13 +478,13 @@ fun ProfileScreen(
             )
         }
 
-        // 6. Offline Ready Status (Minimalist Tile)
+        // 8. Offline Ready Status (Minimalist Tile)
         item {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
             ) {
                 Row(
                     modifier = Modifier
@@ -403,13 +533,21 @@ fun ProfileScreen(
     }
 
     if (showEditProfileDialog) {
-        EditProfileDialog(
+        EditProfileWithAvatarDialog(
             currentName = profile?.name ?: "JLPT Scholar",
             currentGoal = profile?.dailyGoal ?: 15,
             currentLevel = profile?.targetJlptLevel ?: "N3",
+            currentAvatarIndex = profile?.avatarIndex ?: 0,
+            currentCustomAvatarUri = profile?.customAvatarUri,
             onDismiss = { showEditProfileDialog = false },
-            onSave = { name, goal, level ->
-                vocabViewModel.updateProfile(name, goal, level)
+            onSave = { name, goal, level, avatarIndex, customUri ->
+                vocabViewModel.updateProfile(
+                    name = name,
+                    dailyGoal = goal,
+                    targetJlpt = level,
+                    avatarIndex = avatarIndex,
+                    customAvatarUri = customUri
+                )
                 showEditProfileDialog = false
             }
         )
@@ -420,14 +558,14 @@ fun ProfileScreen(
 private fun ProfileStatTile(
     title: String,
     value: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     color: Color,
     modifier: Modifier = Modifier
 ) {
     Surface(
         shape = RoundedCornerShape(14.dp),
         color = color.copy(alpha = 0.08f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.18f)),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.18f)),
         modifier = modifier
     ) {
         Row(
@@ -469,20 +607,32 @@ private fun ProfileStatTile(
 }
 
 @Composable
-private fun EditProfileDialog(
+private fun EditProfileWithAvatarDialog(
     currentName: String,
     currentGoal: Int,
     currentLevel: String,
+    currentAvatarIndex: Int,
+    currentCustomAvatarUri: String?,
     onDismiss: () -> Unit,
-    onSave: (String, Int, String) -> Unit
+    onSave: (String, Int, String, Int, String?) -> Unit
 ) {
     var name by remember { mutableStateOf(currentName) }
     var goalText by remember { mutableStateOf(currentGoal.toString()) }
     var level by remember { mutableStateOf(currentLevel) }
+    var selectedAvatarIndex by remember { mutableIntStateOf(currentAvatarIndex) }
+    var customAvatarUri by remember { mutableStateOf(currentCustomAvatarUri) }
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            customAvatarUri = uri.toString()
+        }
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             modifier = Modifier
                 .fillMaxWidth()
@@ -492,21 +642,167 @@ private fun EditProfileDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(22.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text(
                     text = "Edit Student Profile",
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp),
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = JapaneseCrimson
                 )
+
+                // Avatar Preview & Gallery Photo Picker Controls
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(CircleShape)
+                            .clickable {
+                                photoPickerLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            }
+                    ) {
+                        if (!customAvatarUri.isNullOrBlank()) {
+                            AsyncImage(
+                                model = customAvatarUri,
+                                contentDescription = "Chosen Avatar",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                                    .border(2.5.dp, JapaneseCrimson, CircleShape)
+                            )
+                        } else {
+                            val preset = PRESET_AVATARS.getOrNull(selectedAvatarIndex)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                                    .background(JapaneseCrimson.copy(alpha = 0.12f))
+                                    .border(2.dp, JapaneseCrimson.copy(alpha = 0.3f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = preset?.first ?: "🧑‍🏫",
+                                    fontSize = 38.sp
+                                )
+                            }
+                        }
+
+                        // Overlay camera icon
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .align(Alignment.BottomEnd)
+                                .clip(CircleShape)
+                                .background(JapaneseCrimson),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PhotoCamera,
+                                contentDescription = "Pick Image",
+                                tint = Color.White,
+                                modifier = Modifier.size(13.dp)
+                            )
+                        }
+                    }
+
+                    // Actions for photo: Choose photo or Remove photo
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                photoPickerLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Image,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Choose Photo", fontSize = 12.sp)
+                        }
+
+                        if (!customAvatarUri.isNullOrBlank()) {
+                            IconButton(
+                                onClick = { customAvatarUri = null },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Remove Photo",
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Preset Avatars Selection (when custom photo isn't selected or as backup)
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "Or Select Preset Avatar:",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(vertical = 4.dp)
+                    ) {
+                        itemsIndexed(PRESET_AVATARS) { index, preset ->
+                            val isSelected = selectedAvatarIndex == index && customAvatarUri.isNullOrBlank()
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isSelected) JapaneseCrimson.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (isSelected) JapaneseCrimson else Color.Transparent
+                                ),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable {
+                                        selectedAvatarIndex = index
+                                        customAvatarUri = null
+                                    }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(text = preset.first, fontSize = 18.sp)
+                                    Text(
+                                        text = preset.second,
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (isSelected) JapaneseCrimson else MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
 
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Student Name") },
                     singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -515,33 +811,65 @@ private fun EditProfileDialog(
                     onValueChange = { goalText = it },
                     label = { Text("Daily Review Goal (Cards)") },
                     singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                OutlinedTextField(
-                    value = level,
-                    onValueChange = { level = it },
-                    label = { Text("Target JLPT Level") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                // Target JLPT Level Chips
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "Target JLPT Level:",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        listOf("N5", "N4", "N3", "N2", "N1").forEach { jlpt ->
+                            FilterChip(
+                                selected = level == jlpt,
+                                onClick = { level = jlpt },
+                                label = { Text(jlpt, fontSize = 11.sp) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = JapaneseIndigo,
+                                    selectedLabelColor = Color.White
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    OutlinedButton(onClick = onDismiss, modifier = Modifier.padding(end = 8.dp)) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
                         Text("Cancel")
                     }
 
                     Button(
                         onClick = {
                             val goal = goalText.toIntOrNull() ?: 15
-                            onSave(name.trim(), goal, level.trim())
-                        }
+                            onSave(name.trim(), goal, level.trim(), selectedAvatarIndex, customAvatarUri)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = JapaneseCrimson),
+                        shape = RoundedCornerShape(10.dp)
                     ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text("Save Profile")
                     }
                 }

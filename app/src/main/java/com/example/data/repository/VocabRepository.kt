@@ -19,11 +19,14 @@ class VocabRepository(
     private val userProfileDao: UserProfileDao,
     private val quizDao: QuizDao
 ) {
-    suspend fun ensureDataSeeded() {
+    suspend fun ensureDataSeeded(forceRefresh: Boolean = false) {
         val count = vocabDao.getCardCount()
-        if (count < 1101) {
-            val allCards = com.example.data.seed.VocabSeedDataApplied.getAllSeedCards()
+        val allCards = com.example.data.seed.VocabSeedDataApplied.getAllSeedCards()
+        if (forceRefresh) {
             vocabDao.clearNonCustomCards()
+            vocabDao.insertCards(allCards)
+        } else if (count != allCards.size) {
+            // Insert missing cards without clearing existing cards, keeping all user progress and bookmarks safe
             vocabDao.insertCards(allCards)
         }
         val profile = userProfileDao.getProfile().firstOrNull()
@@ -226,6 +229,35 @@ class VocabRepository(
                 name = name,
                 dailyGoal = dailyGoal,
                 targetJlptLevel = targetJlpt
+            )
+        )
+    }
+
+    suspend fun updateFullProfile(
+        name: String,
+        dailyGoal: Int,
+        targetJlpt: String,
+        avatarIndex: Int,
+        customAvatarUri: String?
+    ) {
+        val current = userProfileDao.getProfile().firstOrNull() ?: UserProfile(id = 1)
+        userProfileDao.updateProfile(
+            current.copy(
+                name = name,
+                dailyGoal = dailyGoal,
+                targetJlptLevel = targetJlpt,
+                avatarIndex = avatarIndex,
+                customAvatarUri = customAvatarUri
+            )
+        )
+    }
+
+    suspend fun updateAvatar(avatarIndex: Int, customAvatarUri: String?) {
+        val current = userProfileDao.getProfile().firstOrNull() ?: UserProfile(id = 1)
+        userProfileDao.updateProfile(
+            current.copy(
+                avatarIndex = avatarIndex,
+                customAvatarUri = customAvatarUri
             )
         )
     }

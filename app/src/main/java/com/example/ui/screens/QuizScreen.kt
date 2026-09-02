@@ -36,6 +36,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkAdd
@@ -81,6 +82,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -114,7 +116,10 @@ import com.example.ui.viewmodel.QuizType
 import com.example.ui.viewmodel.QuizViewModel
 
 @Composable
-fun QuizScreen(quizViewModel: QuizViewModel) {
+fun QuizScreen(
+    quizViewModel: QuizViewModel,
+    onNavigateToHistory: () -> Unit = {}
+) {
     val state by quizViewModel.quizState.collectAsState()
     val history by quizViewModel.quizHistory.collectAsState()
     val isSpeaking by quizViewModel.isTtsSpeaking.collectAsState()
@@ -163,7 +168,8 @@ fun QuizScreen(quizViewModel: QuizViewModel) {
                     history = history,
                     onStartQuiz = { type, lesson, count ->
                         quizViewModel.startQuiz(type, lesson, count)
-                    }
+                    },
+                    onNavigateToHistory = onNavigateToHistory
                 )
             }
         }
@@ -173,7 +179,8 @@ fun QuizScreen(quizViewModel: QuizViewModel) {
 @Composable
 private fun QuizLobbyView(
     history: List<QuizHistory>,
-    onStartQuiz: (QuizType, Int?, Int) -> Unit
+    onStartQuiz: (QuizType, Int?, Int) -> Unit,
+    onNavigateToHistory: () -> Unit = {}
 ) {
     var selectedLessonFilter by remember { mutableStateOf<Int?>(null) } // null = All, -2 = Bookmarked, -1 = Weak, 1..29 = Lesson
     var selectedQuestionCount by remember { mutableIntStateOf(10) }
@@ -257,7 +264,8 @@ private fun QuizLobbyView(
                                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(12.dp))
-                                        .clickable { showHistoryDialog = !showHistoryDialog }
+                                        .clickable { onNavigateToHistory() }
+                                        .testTag("quiz_lobby_history_btn")
                                 ) {
                                     Row(
                                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -509,11 +517,37 @@ private fun QuizLobbyView(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
+
+                    TextButton(
+                        onClick = onNavigateToHistory,
+                        modifier = Modifier.testTag("view_all_quiz_history_btn")
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = "View Last 10 Sessions",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = JapaneseCrimson
+                            )
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = JapaneseCrimson
+                            )
+                        }
+                    }
                 }
             }
 
             items(history.take(5)) { item ->
-                QuizHistoryItem(history = item)
+                QuizHistoryItem(
+                    history = item,
+                    onClick = onNavigateToHistory
+                )
             }
         }
     }
@@ -1680,9 +1714,14 @@ private fun QuizResultView(
 }
 
 @Composable
-private fun QuizHistoryItem(history: QuizHistory) {
+private fun QuizHistoryItem(
+    history: QuizHistory,
+    onClick: () -> Unit = {}
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))

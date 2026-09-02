@@ -56,6 +56,8 @@ fun VocabCardItem(
     card: VocabCard,
     onBookmarkToggle: () -> Unit,
     onSpeak: (String) -> Unit,
+    onSpeakPhonetic: ((String) -> Unit)? = null,
+    onSpeakSlow: ((String) -> Unit)? = null,
     onEditNote: () -> Unit,
     onEditTags: (() -> Unit)? = null,
     onTagClick: ((String) -> Unit)? = null,
@@ -106,12 +108,19 @@ fun VocabCardItem(
                 ) {
                     // Kanji badge / text
                     Column {
-                        // Furigana reading
+                        // Furigana reading (tap for phonetic pronunciation)
                         Text(
                             text = card.reading,
                             style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                             color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.clickable {
+                                if (onSpeakPhonetic != null) {
+                                    onSpeakPhonetic(card.reading)
+                                } else {
+                                    onSpeak(card.reading)
+                                }
+                            }
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(

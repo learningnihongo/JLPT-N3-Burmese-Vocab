@@ -9,6 +9,7 @@ data class UserProfile(
     val id: Int = 1,
     val name: String = "Sensei Student",
     val avatarIndex: Int = 0,
+    val customAvatarUri: String? = null,
     val targetJlptLevel: String = "N3",
     val dailyGoal: Int = 15,
     val totalXp: Int = 0,

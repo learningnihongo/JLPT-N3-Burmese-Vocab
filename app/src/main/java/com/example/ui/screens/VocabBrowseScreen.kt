@@ -314,7 +314,9 @@ fun VocabBrowseScreen(
                         VocabCardItem(
                             card = card,
                             onBookmarkToggle = { vocabViewModel.toggleBookmark(card) },
-                            onSpeak = { vocabViewModel.speakJapanese(it) },
+                            onSpeak = { vocabViewModel.speakCard(card) },
+                            onSpeakPhonetic = { vocabViewModel.speakPhonetic(it) },
+                            onSpeakSlow = { vocabViewModel.speakSlow(it) },
                             onEditNote = { editingCardForNote = card },
                             onEditTags = { editingCardForTags = card },
                             onTagClick = { clickedTag -> vocabViewModel.selectTag(clickedTag) },

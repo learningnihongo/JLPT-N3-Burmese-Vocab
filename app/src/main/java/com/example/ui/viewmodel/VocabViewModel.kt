@@ -23,6 +23,8 @@ import com.example.ui.theme.IconThemeStyle
 import com.example.ui.theme.ThemeMode
 import com.example.ui.theme.ThemePalette
 import com.example.ui.util.TtsHelper
+import com.example.ui.util.VoiceSettings
+import com.example.ui.util.VoiceSettingsPreferences
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -179,15 +181,41 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
     val ttsHelper = TtsHelper(application)
     private val reminderPrefs = ReminderPreferences(application)
     private val themePrefs = AppThemePreferences(application)
+    private val voicePrefs = VoiceSettingsPreferences(application)
 
     val reminderSettings: StateFlow<ReminderSettings> = reminderPrefs.settingsFlow
     val themeSettings: StateFlow<AppThemeSettings> = themePrefs.themeSettingsFlow
+    val voiceSettings: StateFlow<VoiceSettings> = voicePrefs.settingsFlow
 
     fun setThemeMode(mode: ThemeMode) = themePrefs.setThemeMode(mode)
     fun setThemePalette(palette: ThemePalette) = themePrefs.setThemePalette(palette)
     fun setIconThemeStyle(style: IconThemeStyle) = themePrefs.setIconThemeStyle(style)
     fun setOledBlack(oled: Boolean) = themePrefs.setOledBlack(oled)
     fun toggleDarkMode(currentIsDark: Boolean) = themePrefs.toggleDarkMode(currentIsDark)
+
+    // Voice & Pronunciation Preferences Controls
+    fun setVoiceSpeechRate(rate: Float) {
+        voicePrefs.updateSettings(speechRate = rate)
+        ttsHelper.setSpeechRate(rate)
+    }
+
+    fun setVoicePitch(pitch: Float) {
+        voicePrefs.updateSettings(pitch = pitch)
+        ttsHelper.setPitch(pitch)
+    }
+
+    fun setVoicePreferPhonetic(prefer: Boolean) {
+        voicePrefs.updateSettings(preferPhoneticReading = prefer)
+    }
+
+    fun setVoiceAutoPlayFlip(autoPlay: Boolean) {
+        voicePrefs.updateSettings(autoPlayAudioOnFlip = autoPlay)
+    }
+
+    fun testVoicePronunciation() {
+        val sampleText = "こんにちは！日本語の漢字と語彙の発音練習です。"
+        ttsHelper.speak(sampleText)
+    }
 
     init {
         viewModelScope.launch {
@@ -1072,9 +1100,21 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun updateProfile(name: String, dailyGoal: Int, targetJlpt: String) {
+    fun updateProfile(
+        name: String,
+        dailyGoal: Int,
+        targetJlpt: String,
+        avatarIndex: Int = 0,
+        customAvatarUri: String? = null
+    ) {
         viewModelScope.launch {
-            repository.updateProfileName(name, dailyGoal, targetJlpt)
+            repository.updateFullProfile(name, dailyGoal, targetJlpt, avatarIndex, customAvatarUri)
+        }
+    }
+
+    fun updateAvatar(avatarIndex: Int, customAvatarUri: String?) {
+        viewModelScope.launch {
+            repository.updateAvatar(avatarIndex, customAvatarUri)
         }
     }
 
@@ -1085,12 +1125,43 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
         ttsHelper.speak(text, rate)
     }
 
+    /**
+     * Speaks the card according to preferences (phonetic kana vs natural kanji).
+     */
+    fun speakCard(card: VocabCard, preferPhonetic: Boolean? = null, rate: Float? = null) {
+        val usePhonetic = preferPhonetic ?: voiceSettings.value.preferPhoneticReading
+        ttsHelper.speakCard(card, preferPhonetic = usePhonetic, rate = rate)
+    }
+
+    /**
+     * Speaks phonetic Hiragana reading directly (guaranteeing exact pitch accent).
+     */
+    fun speakPhonetic(reading: String, rate: Float? = null) {
+        ttsHelper.speakPhonetic(reading, rate)
+    }
+
+    /**
+     * Speaks slow pronunciation (0.7x).
+     */
+    fun speakSlow(text: String) {
+        ttsHelper.speakSlow(text)
+    }
+
+    /**
+     * Speaks example sentence with clean formatting.
+     */
+    fun speakSentence(sentence: String, rate: Float? = null) {
+        ttsHelper.speakSentence(sentence, rate)
+    }
+
     fun toggleSpeechRate() {
         ttsHelper.toggleSpeechRate()
+        voicePrefs.updateSettings(speechRate = ttsHelper.speechRate.value)
     }
 
     fun setSpeechRate(rate: Float) {
         ttsHelper.setSpeechRate(rate)
+        voicePrefs.updateSettings(speechRate = rate)
     }
 
     fun stopSpeaking() {
@@ -1127,8 +1198,8 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
                 if (index >= currentDeck.size) break
                 val card = currentDeck[index]
 
-                // Step 1: Speak Japanese
-                speakJapanese(card.kanji)
+                // Step 1: Speak Japanese with smart phonetic/kanji cleaner
+                speakCard(card)
                 kotlinx.coroutines.delay((_autoPlaySpeedSec.value * 1000L).coerceAtLeast(2000L))
 
                 if (!_isAutoPlay.value || _isSessionFinished.value) break
@@ -1137,7 +1208,7 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
                 _isCardFlipped.value = true
                 if (card.exampleSentence.isNotBlank()) {
                     kotlinx.coroutines.delay(1000L)
-                    speakJapanese(card.exampleSentence)
+                    speakSentence(card.exampleSentence)
                 }
                 kotlinx.coroutines.delay((_autoPlaySpeedSec.value * 1000L).coerceAtLeast(2000L))
 
@@ -1192,7 +1263,15 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun flipCard() {
-        _isCardFlipped.value = !_isCardFlipped.value
+        val nextFlipped = !_isCardFlipped.value
+        _isCardFlipped.value = nextFlipped
+        if (nextFlipped && voiceSettings.value.autoPlayAudioOnFlip) {
+            val currentDeck = _studyDeck.value
+            val index = _currentCardIndex.value
+            if (index in currentDeck.indices) {
+                speakCard(currentDeck[index])
+            }
+        }
     }
 
     fun previousCard() {

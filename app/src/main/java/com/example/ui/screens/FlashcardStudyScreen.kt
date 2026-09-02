@@ -813,32 +813,59 @@ fun FlashcardStudyScreen(
 
                                             Spacer(modifier = Modifier.height(10.dp))
 
-                                            // Pronunciation Buttons
+                                            // Enhanced Pronunciation Audio Controls
                                             Row(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                                             ) {
                                                 IconButton(
-                                                    onClick = { vocabViewModel.speakJapanese(currentCard.kanji) },
+                                                    onClick = { vocabViewModel.speakCard(currentCard) },
                                                     modifier = Modifier
                                                         .size(42.dp)
                                                         .background(
                                                             if (isSpeaking) JapaneseCrimson.copy(alpha = 0.2f) else MaterialTheme.colorScheme.primaryContainer,
                                                             CircleShape
                                                         )
+                                                        .testTag("flashcard_speak_btn")
                                                 ) {
                                                     Icon(
                                                         imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                                                        contentDescription = "Speak",
+                                                        contentDescription = "Speak Pronunciation",
                                                         tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                                         modifier = Modifier.size(20.dp)
                                                     )
                                                 }
 
+                                                if (currentCard.reading.isNotBlank()) {
+                                                    Surface(
+                                                        shape = RoundedCornerShape(10.dp),
+                                                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
+                                                        modifier = Modifier
+                                                            .clickable { vocabViewModel.speakPhonetic(currentCard.reading) }
+                                                            .testTag("flashcard_phonetic_btn")
+                                                    ) {
+                                                        Row(
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                        ) {
+                                                            Text("🗣️", fontSize = 11.sp)
+                                                            Text(
+                                                                "Kana",
+                                                                fontSize = (10 * fontScale).coerceAtLeast(9f).sp,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                                                            )
+                                                        }
+                                                    }
+                                                }
+
                                                 Surface(
                                                     shape = RoundedCornerShape(10.dp),
                                                     color = MaterialTheme.colorScheme.surfaceVariant,
-                                                    modifier = Modifier.clickable { vocabViewModel.speakJapanese(currentCard.kanji, 0.6f) }
+                                                    modifier = Modifier
+                                                        .clickable { vocabViewModel.speakSlow(currentCard.kanji) }
+                                                        .testTag("flashcard_slow_btn")
                                                 ) {
                                                     Row(
                                                         verticalAlignment = Alignment.CenterVertically,
@@ -846,7 +873,7 @@ fun FlashcardStudyScreen(
                                                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                                                     ) {
                                                         Icon(Icons.Default.Speed, contentDescription = null, modifier = Modifier.size(13.dp))
-                                                        Text("0.6x", fontSize = (10 * fontScale).coerceAtLeast(9f).sp, fontWeight = FontWeight.Bold)
+                                                        Text("0.7x", fontSize = (10 * fontScale).coerceAtLeast(9f).sp, fontWeight = FontWeight.Bold)
                                                     }
                                                 }
                                             }
@@ -1039,7 +1066,7 @@ fun FlashcardStudyScreen(
                                         color = JapaneseCrimson
                                     )
                                     IconButton(
-                                        onClick = { vocabViewModel.speakJapanese(currentCard.kanji) },
+                                        onClick = { vocabViewModel.speakCard(currentCard) },
                                         modifier = Modifier.size(28.dp)
                                     ) {
                                         Icon(
@@ -1123,7 +1150,7 @@ fun FlashcardStudyScreen(
                                                     modifier = Modifier.weight(1f, fill = false)
                                                 )
                                                 IconButton(
-                                                    onClick = { vocabViewModel.speakJapanese(currentCard.exampleSentence) },
+                                                    onClick = { vocabViewModel.speakSentence(currentCard.exampleSentence) },
                                                     modifier = Modifier.size(24.dp)
                                                 ) {
                                                     Icon(

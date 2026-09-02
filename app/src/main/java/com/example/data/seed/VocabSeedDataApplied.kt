@@ -4,9 +4,20 @@ import com.example.data.model.VocabCard
 
 object VocabSeedDataApplied {
     fun getAllSeedCards(): List<VocabCard> {
-        return VocabSeedData1To300.getCards1To300() + 
-               VocabSeedData301To600.getCards301To600() + 
-               VocabSeedData601To880.getCards601To880() +
-               VocabSeedData901To1101.getCards901To1101()
+        return VocabSeedDataPart1.getCards() +
+               VocabSeedDataPart2.getCards() +
+               VocabSeedDataPart3A.getCards() +
+               VocabSeedDataPart3B.getCards() +
+               VocabSeedDataPart4.getCards() +
+               VocabSeedDataPart5.getCards() +
+               VocabSeedDataPart6A.getCards() +
+               VocabSeedDataPart6B.getCards() +
+               VocabSeedDataShinkanzen1.getCards() +
+               VocabSeedDataShinkanzen2.getCards() +
+               VocabSeedDataShinkanzen3.getCards() +
+               VocabSeedDataShinkanzen4.getCards() +
+               VocabSeedDataExtra1.getCards() +
+               VocabSeedDataExtra2.getCards()
     }
 }
+

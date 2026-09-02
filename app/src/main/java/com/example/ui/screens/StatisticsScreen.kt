@@ -1,24 +1,85 @@
 package com.example.ui.screens
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material.icons.filled.Quiz
+import androidx.compose.material.icons.filled.Radar
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.WorkspacePremium
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.PrimaryScrollableTabRow
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,8 +90,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -42,7 +103,15 @@ import com.example.data.model.VocabCard
 import com.example.ui.components.BadgeDetailDialog
 import com.example.ui.components.TrophyShowcaseCard
 import com.example.ui.components.VisualSummaryDashboardCard
-import com.example.ui.theme.*
+import com.example.ui.theme.JapaneseCrimson
+import com.example.ui.theme.JapaneseIndigo
+import com.example.ui.theme.MasteredGreen
+import com.example.ui.theme.PolishOutline
+import com.example.ui.theme.PolishOutlineVariant
+import com.example.ui.theme.PolishTertiary
+import com.example.ui.theme.ReviewBlue
+import com.example.ui.theme.StreakOrange
+import com.example.ui.theme.WeakOrange
 import com.example.ui.viewmodel.DailyStudyPoint
 import com.example.ui.viewmodel.LessonMasteryDetail
 import com.example.ui.viewmodel.MasteryBreakdown
@@ -51,8 +120,18 @@ import com.example.ui.viewmodel.QuizViewModel
 import com.example.ui.viewmodel.StatsTimeRange
 import com.example.ui.viewmodel.VocabFilterType
 import com.example.ui.viewmodel.VocabViewModel
-import kotlin.math.cos
-import kotlin.math.sin
+
+enum class StatsTab(
+    val title: String,
+    val myanmarSubtitle: String,
+    val icon: ImageVector
+) {
+    OVERVIEW("Overview", "ခြုံငုံသုံးသပ်ချက်", Icons.Default.BarChart),
+    QUIZ("Quizzes", "စွမ်းဆောင်ရည်", Icons.Default.Quiz),
+    DEEP_DIVE("Analysis", "ခွဲခြမ်းစိတ်ဖြာမှု", Icons.Default.Radar),
+    LESSONS("Lessons", "သင်ခန်းစာများ", Icons.Default.MenuBook),
+    BADGES("Badges", "ဆုတံဆိပ်များ", Icons.Default.EmojiEvents)
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,7 +139,8 @@ fun StatisticsScreen(
     vocabViewModel: VocabViewModel,
     quizViewModel: QuizViewModel? = null,
     onNavigateToStudy: (List<VocabCard>) -> Unit = {},
-    onNavigateToBrowse: (VocabFilterType) -> Unit = {}
+    onNavigateToBrowse: (VocabFilterType) -> Unit = {},
+    onNavigateToQuizHistory: () -> Unit = {}
 ) {
     val profile by vocabViewModel.userProfile.collectAsState()
     val masteryBreakdown by vocabViewModel.masteryBreakdown.collectAsState()
@@ -75,15 +155,26 @@ fun StatisticsScreen(
     val categoryStats by vocabViewModel.kanjiCategoryStats.collectAsState()
     val streakSummary by vocabViewModel.dailyStreakSummary.collectAsState()
 
+    var selectedTab by remember { mutableStateOf(StatsTab.OVERVIEW) }
     var selectedDayIndex by remember { mutableStateOf<Int?>(null) }
     var selectedLessonFilter by remember { mutableStateOf("") }
+    var lessonMasteryFilter by remember { mutableStateOf("ALL") } // "ALL", "MASTERED", "IN_PROGRESS", "NEEDS_REVIEW"
     var selectedBadgeForDetail by remember { mutableStateOf<Badge?>(null) }
 
-    val filteredLessons = remember(lessonStats, selectedLessonFilter) {
-        if (selectedLessonFilter.isBlank()) lessonStats
-        else lessonStats.filter {
-            it.lessonTitle.contains(selectedLessonFilter, ignoreCase = true) ||
-                    it.lessonNumber.toString().contains(selectedLessonFilter)
+    val filteredLessons = remember(lessonStats, selectedLessonFilter, lessonMasteryFilter) {
+        lessonStats.filter { lesson ->
+            val matchesText = if (selectedLessonFilter.isBlank()) true
+            else {
+                lesson.lessonTitle.contains(selectedLessonFilter, ignoreCase = true) ||
+                        lesson.lessonNumber.toString().contains(selectedLessonFilter)
+            }
+            val matchesFilter = when (lessonMasteryFilter) {
+                "MASTERED" -> lesson.masteryPercent >= 80f
+                "IN_PROGRESS" -> lesson.masteryPercent in 20f..79.9f
+                "NEEDS_REVIEW" -> lesson.dueCount > 0 || lesson.masteryPercent < 20f
+                else -> true
+            }
+            matchesText && matchesFilter
         }
     }
 
@@ -95,7 +186,7 @@ fun StatisticsScreen(
         contentPadding = PaddingValues(bottom = 96.dp, top = 8.dp, start = 16.dp, end = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // 1. Top Summary Banner: Overall JLPT N3 Progress & Key Metrics
+        // 1. Hero KPI Banner: Clean, High-Contrast & Beautifully Spaced
         item {
             Card(
                 modifier = Modifier
@@ -103,535 +194,758 @@ fun StatisticsScreen(
                     .testTag("stats_overview_banner"),
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                Column(
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = "JLPT N3 MASTERY OVERVIEW",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontSize = 11.sp,
-                                    letterSpacing = 1.2.sp
-                                ),
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                text = "${masteryBreakdown.masteryPercent.toInt()}% Mastered",
-                                style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-
-                        // Target Level Pill
-                        Surface(
-                            shape = RoundedCornerShape(50),
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.WorkspacePremium,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.size(16.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    JapaneseCrimson.copy(alpha = 0.08f),
+                                    JapaneseIndigo.copy(alpha = 0.03f)
                                 )
+                            )
+                        )
+                        .padding(18.dp)
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(
+                                        text = "JLPT N3 PROGRESS",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontSize = 11.sp,
+                                            letterSpacing = 1.1.sp
+                                        ),
+                                        fontWeight = FontWeight.Bold,
+                                        color = JapaneseCrimson
+                                    )
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = JapaneseCrimson.copy(alpha = 0.12f)
+                                    ) {
+                                        Text(
+                                            text = "လေ့လာမှုအခြေအနေ",
+                                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                            fontWeight = FontWeight.Bold,
+                                            color = JapaneseCrimson,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
                                 Text(
-                                    text = "Target: JLPT ${profile?.targetJlptLevel ?: "N3"}",
-                                    style = MaterialTheme.typography.labelMedium,
+                                    text = "${masteryBreakdown.masteryPercent.toInt()}% Mastered",
+                                    style = MaterialTheme.typography.headlineMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
-                        }
-                    }
 
-                    // 4-Column Key Metrics Grid
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        MetricCard(
-                            modifier = Modifier.weight(1f),
-                            title = "Total N3",
-                            value = "${masteryBreakdown.totalCards}",
-                            icon = Icons.Default.MenuBook,
-                            accentColor = MaterialTheme.colorScheme.primary
-                        )
-                        MetricCard(
-                            modifier = Modifier.weight(1f),
-                            title = "Mastered",
-                            value = "${masteryBreakdown.masteredCount}",
-                            icon = Icons.Default.CheckCircle,
-                            accentColor = MasteredGreen
-                        )
-                        MetricCard(
-                            modifier = Modifier.weight(1f),
-                            title = "Accuracy",
-                            value = "${accuracySummary.accuracyPercent}%",
-                            icon = Icons.AutoMirrored.Filled.TrendingUp,
-                            accentColor = ReviewBlue
-                        )
-                        MetricCard(
-                            modifier = Modifier.weight(1f),
-                            title = "Streak",
-                            value = "${profile?.currentStreak ?: 1}d",
-                            icon = Icons.Default.LocalFireDepartment,
-                            accentColor = StreakOrange
-                        )
+                            // Target Level Badge
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = JapaneseIndigo.copy(alpha = 0.12f),
+                                border = BorderStroke(1.dp, JapaneseIndigo.copy(alpha = 0.25f))
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.WorkspacePremium,
+                                        contentDescription = null,
+                                        tint = JapaneseIndigo,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Text(
+                                        text = "Target: JLPT ${profile?.targetJlptLevel ?: "N3"}",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = JapaneseIndigo
+                                    )
+                                }
+                            }
+                        }
+
+                        // 4-Column Key Metrics Grid
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            MetricCard(
+                                modifier = Modifier.weight(1f),
+                                title = "Vocab",
+                                sub = "စုစုပေါင်း",
+                                value = "${masteryBreakdown.totalCards}",
+                                icon = Icons.Default.MenuBook,
+                                accentColor = JapaneseIndigo
+                            )
+                            MetricCard(
+                                modifier = Modifier.weight(1f),
+                                title = "Mastered",
+                                sub = "ကျွမ်းကျင်",
+                                value = "${masteryBreakdown.masteredCount}",
+                                icon = Icons.Default.CheckCircle,
+                                accentColor = MasteredGreen
+                            )
+                            MetricCard(
+                                modifier = Modifier.weight(1f),
+                                title = "Accuracy",
+                                sub = "မှန်ကန်မှု",
+                                value = "${accuracySummary.accuracyPercent}%",
+                                icon = Icons.AutoMirrored.Filled.TrendingUp,
+                                accentColor = ReviewBlue
+                            )
+                            MetricCard(
+                                modifier = Modifier.weight(1f),
+                                title = "Streak",
+                                sub = "ရက်ဆက်",
+                                value = "${profile?.currentStreak ?: 1}d",
+                                icon = Icons.Default.LocalFireDepartment,
+                                accentColor = StreakOrange
+                            )
+                        }
                     }
                 }
             }
         }
 
-        // 2. Interactive Visual Summary Dashboard (Daily Study Streaks & Kanji Category Mastery)
+        // 2. Clean Segmented Tab Switcher (Makes the UI neat, scannable & clutter-free)
         item {
-            VisualSummaryDashboardCard(
-                streakSummary = streakSummary,
-                categoryStats = categoryStats,
-                allCards = allCards,
-                onStudyCategory = { categoryCards ->
-                    onNavigateToStudy(categoryCards)
-                }
-            )
-        }
-
-        // 3. Daily Learning Progress Chart (Compose Canvas Bar Chart)
-        item {
-            Card(
+            ScrollableTabRow(
+                selectedTabIndex = selectedTab.ordinal,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .testTag("daily_progress_chart_card"),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .testTag("stats_tab_row"),
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = JapaneseCrimson,
+                edgePadding = 8.dp,
+                divider = {}
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    // Header & Range Selector
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = "Daily Learning Activity",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = "Cards studied & XP earned per day",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                StatsTab.values().forEach { tab ->
+                    val isSelected = selectedTab == tab
+                    Tab(
+                        selected = isSelected,
+                        onClick = { selectedTab = tab },
+                        text = {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = tab.icon,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = if (isSelected) JapaneseCrimson else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = tab.title,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) JapaneseCrimson else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontSize = 13.sp
+                                    )
+                                }
+                                Text(
+                                    text = tab.myanmarSubtitle,
+                                    fontSize = 10.sp,
+                                    color = if (isSelected) JapaneseCrimson.copy(alpha = 0.85f) else MaterialTheme.colorScheme.outline
+                                )
+                            }
+                        },
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp)
+                    )
+                }
+            }
+        }
 
-                        // Time Range Toggle
-                        Surface(
-                            shape = RoundedCornerShape(50),
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+        // 3. Tab-Dependent Content
+        when (selectedTab) {
+            StatsTab.OVERVIEW -> {
+                // Donut Mastery Breakdown
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("mastery_donut_card"),
+                        shape = RoundedCornerShape(22.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(18.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            Row(modifier = Modifier.padding(2.dp)) {
-                                StatsTimeRange.entries.forEach { range ->
-                                    val isSelected = selectedTimeRange == range
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(50))
-                                            .background(
-                                                if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
-                                            )
-                                            .clickable { vocabViewModel.setStatsTimeRange(range) }
-                                            .padding(horizontal = 10.dp, vertical = 5.dp)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "JLPT N3 Mastery Breakdown",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "ဝေါဟာရ အဆင့်အလိုက် ခွဲခြားလေ့လာမှု",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = MasteredGreen.copy(alpha = 0.15f)
+                                ) {
+                                    Text(
+                                        text = "${masteryBreakdown.masteredCount}/${masteryBreakdown.totalCards} Words",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MasteredGreen,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                // Canvas Donut Chart
+                                Box(
+                                    modifier = Modifier
+                                        .size(140.dp)
+                                        .testTag("donut_chart_canvas"),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    MasteryDonutChart(
+                                        breakdown = masteryBreakdown,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center
                                     ) {
                                         Text(
-                                            text = range.label,
+                                            text = "${masteryBreakdown.masteryPercent.toInt()}%",
+                                            style = MaterialTheme.typography.titleLarge,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = "Mastered",
                                             style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
+                                }
+
+                                // Donut Legend & Stats
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    MasteryLegendItem(
+                                        label = "Mastered (ကျွမ်းကျင်)",
+                                        count = masteryBreakdown.masteredCount,
+                                        total = masteryBreakdown.totalCards,
+                                        color = MasteredGreen
+                                    )
+                                    MasteryLegendItem(
+                                        label = "Reviewing (ပြန်လည်လေ့ကျင့်)",
+                                        count = masteryBreakdown.reviewingCount,
+                                        total = masteryBreakdown.totalCards,
+                                        color = JapaneseIndigo
+                                    )
+                                    MasteryLegendItem(
+                                        label = "Learning (စတင်လေ့လာ)",
+                                        count = masteryBreakdown.learningCount,
+                                        total = masteryBreakdown.totalCards,
+                                        color = ReviewBlue
+                                    )
+                                    MasteryLegendItem(
+                                        label = "New / Unseen (မလေ့လာရသေး)",
+                                        count = masteryBreakdown.newCount,
+                                        total = masteryBreakdown.totalCards,
+                                        color = PolishOutline
+                                    )
+                                }
+                            }
+
+                            if (dueCount > 0) {
+                                Button(
+                                    onClick = { onNavigateToBrowse(VocabFilterType.DUE_REVIEWS) },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(46.dp)
+                                        .testTag("stats_review_due_btn"),
+                                    shape = RoundedCornerShape(14.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = JapaneseCrimson)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.AutoAwesome,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Review Due Cards ($dueCount Due Now)", fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
                     }
+                }
 
-                    // Selected Day Detail Box
-                    val activeIndex = selectedDayIndex ?: (dailyStats.size - 1).coerceAtLeast(0)
-                    if (dailyStats.isNotEmpty() && activeIndex in dailyStats.indices) {
-                        val activePoint = dailyStats[activeIndex]
-                        Surface(
-                            shape = RoundedCornerShape(14.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                            modifier = Modifier.fillMaxWidth()
+                // Daily Learning Activity Bar Chart
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("daily_progress_chart_card"),
+                        shape = RoundedCornerShape(22.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(18.dp),
+                            verticalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
                             Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "Daily Study Activity",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "နေ့စဉ် လေ့လာပြီးသော ကတ်အရေအတွက်နှင့် XP",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                // Time Range Selector
+                                Surface(
+                                    shape = RoundedCornerShape(50),
+                                    color = MaterialTheme.colorScheme.surfaceVariant,
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                                ) {
+                                    Row(modifier = Modifier.padding(2.dp)) {
+                                        StatsTimeRange.entries.forEach { range ->
+                                            val isSelected = selectedTimeRange == range
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(50))
+                                                    .background(
+                                                        if (isSelected) JapaneseCrimson else Color.Transparent
+                                                    )
+                                                    .clickable { vocabViewModel.setStatsTimeRange(range) }
+                                                    .padding(horizontal = 9.dp, vertical = 4.dp)
+                                            ) {
+                                                Text(
+                                                    text = range.label,
+                                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                    color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Selected Day Detail Box
+                            val activeIndex = selectedDayIndex ?: (dailyStats.size - 1).coerceAtLeast(0)
+                            if (dailyStats.isNotEmpty() && activeIndex in dailyStats.indices) {
+                                val activePoint = dailyStats[activeIndex]
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "${activePoint.dateLabel} (${activePoint.dayName})",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                            Text(
+                                                text = "📚 ${activePoint.cardsCount} Cards",
+                                                style = MaterialTheme.typography.labelMedium,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = JapaneseIndigo
+                                            )
+                                            Text(
+                                                text = "⭐ +${activePoint.xpCount} XP",
+                                                style = MaterialTheme.typography.labelMedium,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = PolishTertiary
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Compose Canvas Bar Chart
+                            DailyStudyBarChart(
+                                dailyPoints = dailyStats,
+                                selectedIndex = selectedDayIndex,
+                                onSelectIndex = { selectedDayIndex = it },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                                    .height(180.dp)
+                            )
+
+                            // Chart Legend & Daily Goal Note
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(10.dp)
+                                                .clip(CircleShape)
+                                                .background(JapaneseCrimson)
+                                        )
+                                        Text(
+                                            text = "Cards Studied",
+                                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .width(12.dp)
+                                                .height(2.dp)
+                                                .background(StreakOrange)
+                                        )
+                                        Text(
+                                            text = "Daily Goal (${profile?.dailyGoal ?: 15})",
+                                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+
+                                Text(
+                                    text = "Tap bar for details",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                    color = MaterialTheme.colorScheme.outline
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            StatsTab.QUIZ -> {
+                // Quiz Performance & Trend Chart
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("quiz_accuracy_trend_card"),
+                        shape = RoundedCornerShape(22.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(18.dp),
+                            verticalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "Quiz Accuracy Trend",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "စစ်ဆေးမှုများတစ်လျှောက် တိကျမှုနှုန်း ပြောင်းလဲပုံ",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                Surface(
+                                    shape = RoundedCornerShape(50),
+                                    color = JapaneseIndigo.copy(alpha = 0.12f)
+                                ) {
+                                    Text(
+                                        text = "Avg: ${quizTrend.map { it.scorePercent }.average().let { if (it.isNaN()) 85 else it.toInt() }}%",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = JapaneseIndigo,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+
+                            // Line/Curve Accuracy Chart
+                            QuizAccuracyCurveChart(
+                                quizPoints = quizTrend,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(150.dp)
+                            )
+
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f),
+                                thickness = 1.dp
+                            )
+
+                            // Direct Action Button to View Last 10 Sessions
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "${activePoint.dateLabel} (${activePoint.dayName})",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    text = "Last 10 sessions recorded",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Text(
-                                        text = "📚 ${activePoint.cardsCount} Cards",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.primary
+
+                                Button(
+                                    onClick = onNavigateToQuizHistory,
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = JapaneseCrimson),
+                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                                    modifier = Modifier.testTag("stats_view_quiz_history_btn")
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.History,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
                                     )
+                                    Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = "⭐ +${activePoint.xpCount} XP",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = PolishTertiary
+                                        text = "View Quiz History",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
                                     )
                                 }
                             }
                         }
                     }
-
-                    // Compose Canvas Bar Chart
-                    DailyStudyBarChart(
-                        dailyPoints = dailyStats,
-                        selectedIndex = selectedDayIndex,
-                        onSelectIndex = { selectedDayIndex = it },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(190.dp)
-                    )
-
-                    // Chart Legend & Daily Goal Note
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(10.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.primary)
-                                )
-                                Text(
-                                    text = "Cards Studied",
-                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .width(12.dp)
-                                        .height(2.dp)
-                                        .background(StreakOrange)
-                                )
-                                Text(
-                                    text = "Daily Target (${profile?.dailyGoal ?: 15})",
-                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-
-                        Text(
-                            text = "Tap bar for details",
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                            color = MaterialTheme.colorScheme.outline
-                        )
-                    }
                 }
             }
-        }
 
-        // 3. JLPT N3 Mastery Donut Breakdown Chart (Compose Canvas)
-        item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("mastery_donut_card"),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Text(
-                        text = "JLPT N3 Mastery Breakdown",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+            StatsTab.DEEP_DIVE -> {
+                // Interactive Visual Summary Dashboard (Daily Study Streaks & Kanji Category Mastery)
+                item {
+                    VisualSummaryDashboardCard(
+                        streakSummary = streakSummary,
+                        categoryStats = categoryStats,
+                        allCards = allCards,
+                        onStudyCategory = { categoryCards ->
+                            onNavigateToStudy(categoryCards)
+                        }
                     )
+                }
+            }
 
-                    Row(
+            StatsTab.LESSONS -> {
+                // Lesson-by-Lesson JLPT N3 Mastery Matrix Header
+                item {
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        // Canvas Donut Chart
-                        Box(
-                            modifier = Modifier
-                                .size(150.dp)
-                                .testTag("donut_chart_canvas"),
-                            contentAlignment = Alignment.Center
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            MasteryDonutChart(
-                                breakdown = masteryBreakdown,
-                                modifier = Modifier.fillMaxSize()
-                            )
-
-                            // Donut Center Content
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
+                            Column {
                                 Text(
-                                    text = "${masteryBreakdown.masteryPercent.toInt()}%",
-                                    style = MaterialTheme.typography.titleLarge,
+                                    text = "Lesson Mastery Progress",
+                                    style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = "Mastered",
-                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                    text = "သင်ခန်းစာ တစ်ခုချင်းစီ၏ တိုးတက်မှု အခြေအနေ",
+                                    style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                        }
 
-                        // Donut Legend & Stats
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            MasteryLegendItem(
-                                label = "Mastered (Lvl 3+)",
-                                count = masteryBreakdown.masteredCount,
-                                total = masteryBreakdown.totalCards,
-                                color = MasteredGreen
-                            )
-                            MasteryLegendItem(
-                                label = "Reviewing (Lvl 2)",
-                                count = masteryBreakdown.reviewingCount,
-                                total = masteryBreakdown.totalCards,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            MasteryLegendItem(
-                                label = "Learning (Lvl 1)",
-                                count = masteryBreakdown.learningCount,
-                                total = masteryBreakdown.totalCards,
-                                color = ReviewBlue
-                            )
-                            MasteryLegendItem(
-                                label = "New / Unseen",
-                                count = masteryBreakdown.newCount,
-                                total = masteryBreakdown.totalCards,
-                                color = PolishOutline
-                            )
-                        }
-                    }
-
-                    // Quick action to practice
-                    Button(
-                        onClick = { onNavigateToBrowse(VocabFilterType.DUE_REVIEWS) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(46.dp)
-                            .testTag("stats_review_due_btn"),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.AutoAwesome,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Review Due Flashcards ($dueCount Due)", fontWeight = FontWeight.SemiBold)
-                    }
-                }
-            }
-        }
-
-        // 4. Quiz Performance & Accuracy Trend Chart
-        item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("quiz_accuracy_trend_card"),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
                             Text(
-                                text = "Quiz Performance Trend",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = "Accuracy trajectory over recent test sessions",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        Surface(
-                            shape = RoundedCornerShape(50),
-                            color = MaterialTheme.colorScheme.secondaryContainer
-                        ) {
-                            Text(
-                                text = "Avg: ${quizTrend.map { it.scorePercent }.average().let { if (it.isNaN()) 85 else it.toInt() }}%",
+                                text = "Showing ${filteredLessons.size} of ${lessonStats.size}",
                                 style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                color = JapaneseCrimson,
+                                fontWeight = FontWeight.Bold
                             )
                         }
-                    }
 
-                    // Line/Curve Accuracy Chart
-                    QuizAccuracyCurveChart(
-                        quizPoints = quizTrend,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(150.dp)
-                    )
-                }
-            }
-        }
-
-        // 5. Digital Trophies & Milestones Showcase
-        item {
-            TrophyShowcaseCard(
-                badges = badges,
-                onBadgeClick = { badge ->
-                    selectedBadgeForDetail = badge
-                }
-            )
-        }
-
-        // 6. Lesson-by-Lesson JLPT N3 Mastery Matrix Header
-        item {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Lesson Mastery Progress",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-
-                    Text(
-                        text = "${lessonStats.size} Lessons",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                // Search / Filter Field for Lessons
-                OutlinedTextField(
-                    value = selectedLessonFilter,
-                    onValueChange = { selectedLessonFilter = it },
-                    placeholder = { Text("Filter lessons (e.g. Lesson 1, Society, Nature)...", fontSize = 13.sp) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("lesson_stats_filter_input"),
-                    shape = RoundedCornerShape(16.dp),
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = "Search",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        // Search Input
+                        OutlinedTextField(
+                            value = selectedLessonFilter,
+                            onValueChange = { selectedLessonFilter = it },
+                            placeholder = { Text("Filter lessons (e.g. Lesson 1, Society, Nature)...", fontSize = 12.sp) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("lesson_stats_filter_input"),
+                            shape = RoundedCornerShape(14.dp),
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = "Search",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            trailingIcon = {
+                                if (selectedLessonFilter.isNotEmpty()) {
+                                    IconButton(onClick = { selectedLessonFilter = "" }) {
+                                        Icon(Icons.Default.Clear, contentDescription = "Clear", modifier = Modifier.size(16.dp))
+                                    }
+                                }
+                            },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = JapaneseCrimson,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
+                            ),
+                            singleLine = true
                         )
-                    },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
-                    ),
-                    singleLine = true
-                )
-            }
-        }
 
-        // Filtered Lesson Items
-        items(filteredLessons, key = { it.lessonNumber }) { lesson ->
-            LessonMasteryCard(
-                lesson = lesson,
-                onStudyLesson = {
-                    val lessonCards = allCards.filter { it.lessonNumber == lesson.lessonNumber }
-                    if (lessonCards.isNotEmpty()) {
-                        onNavigateToStudy(lessonCards)
+                        // Mastery Filter Chips
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            contentPadding = PaddingValues(vertical = 2.dp)
+                        ) {
+                            item {
+                                FilterChip(
+                                    selected = lessonMasteryFilter == "ALL",
+                                    onClick = { lessonMasteryFilter = "ALL" },
+                                    label = { Text("All Lessons", fontWeight = FontWeight.Medium) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = JapaneseIndigo,
+                                        selectedLabelColor = Color.White
+                                    )
+                                )
+                            }
+                            item {
+                                FilterChip(
+                                    selected = lessonMasteryFilter == "MASTERED",
+                                    onClick = { lessonMasteryFilter = "MASTERED" },
+                                    label = { Text("Mastered (≥80%)", fontWeight = FontWeight.Medium) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MasteredGreen,
+                                        selectedLabelColor = Color.White
+                                    )
+                                )
+                            }
+                            item {
+                                FilterChip(
+                                    selected = lessonMasteryFilter == "IN_PROGRESS",
+                                    onClick = { lessonMasteryFilter = "IN_PROGRESS" },
+                                    label = { Text("In Progress (20-79%)", fontWeight = FontWeight.Medium) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = JapaneseCrimson,
+                                        selectedLabelColor = Color.White
+                                    )
+                                )
+                            }
+                            item {
+                                FilterChip(
+                                    selected = lessonMasteryFilter == "NEEDS_REVIEW",
+                                    onClick = { lessonMasteryFilter = "NEEDS_REVIEW" },
+                                    label = { Text("Needs Review / Due", fontWeight = FontWeight.Medium) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = WeakOrange,
+                                        selectedLabelColor = Color.White
+                                    )
+                                )
+                            }
+                        }
                     }
                 }
-            )
+
+                // Filtered Lesson Items
+                items(filteredLessons, key = { it.lessonNumber }) { lesson ->
+                    LessonMasteryCard(
+                        lesson = lesson,
+                        onStudyLesson = {
+                            val lessonCards = allCards.filter { it.lessonNumber == lesson.lessonNumber }
+                            if (lessonCards.isNotEmpty()) {
+                                onNavigateToStudy(lessonCards)
+                            }
+                        }
+                    )
+                }
+            }
+
+            StatsTab.BADGES -> {
+                // Digital Trophies & Milestones Showcase
+                item {
+                    TrophyShowcaseCard(
+                        badges = badges,
+                        onBadgeClick = { badge ->
+                            selectedBadgeForDetail = badge
+                        }
+                    )
+                }
+            }
         }
     }
 
@@ -654,8 +968,8 @@ fun DailyStudyBarChart(
     onSelectIndex: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val primaryContainer = MaterialTheme.colorScheme.primaryContainer
+    val primaryColor = JapaneseCrimson
+    val primaryContainer = JapaneseIndigo.copy(alpha = 0.25f)
     val outlineVariant = PolishOutlineVariant
     val goalColor = StreakOrange
     val textColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -794,7 +1108,7 @@ fun MasteryDonutChart(
     modifier: Modifier = Modifier
 ) {
     val masteredColor = MasteredGreen
-    val reviewingColor = MaterialTheme.colorScheme.primary
+    val reviewingColor = JapaneseIndigo
     val learningColor = ReviewBlue
     val newColor = PolishOutlineVariant
 
@@ -887,8 +1201,7 @@ fun QuizAccuracyCurveChart(
     quizPoints: List<QuizTrendPoint>,
     modifier: Modifier = Modifier
 ) {
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val tertiaryColor = PolishTertiary
+    val primaryColor = JapaneseCrimson
     val outlineVariant = PolishOutlineVariant
     val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
 
@@ -1020,38 +1333,49 @@ fun QuizAccuracyCurveChart(
 @Composable
 fun MetricCard(
     title: String,
+    sub: String,
     value: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     accentColor: Color,
     modifier: Modifier = Modifier
 ) {
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
         modifier = modifier
     ) {
         Column(
             modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 tint = accentColor,
-                modifier = Modifier.size(18.dp)
+                modifier = Modifier.size(16.dp)
             )
             Text(
                 text = value,
                 style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = title,
                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = sub,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                color = MaterialTheme.colorScheme.outline,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -1119,7 +1443,7 @@ fun LessonMasteryCard(
             .testTag("lesson_mastery_card_${lesson.lessonNumber}"),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
@@ -1142,14 +1466,14 @@ fun LessonMasteryCard(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primaryContainer),
+                            .background(JapaneseIndigo.copy(alpha = 0.12f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = if (lesson.lessonNumber == 999) "★" else "L${lesson.lessonNumber}",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                            color = JapaneseIndigo
                         )
                     }
 
@@ -1180,7 +1504,7 @@ fun LessonMasteryCard(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = "Study Lesson",
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = JapaneseCrimson,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -1206,7 +1530,7 @@ fun LessonMasteryCard(
                             .height(8.dp)
                             .clip(RoundedCornerShape(50))
                             .background(
-                                if (lesson.masteryPercent >= 80) MasteredGreen else MaterialTheme.colorScheme.primary
+                                if (lesson.masteryPercent >= 80) MasteredGreen else JapaneseCrimson
                             )
                     )
                 }
@@ -1215,7 +1539,7 @@ fun LessonMasteryCard(
                     text = "${lesson.masteryPercent.toInt()}%",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
-                    color = if (lesson.masteryPercent >= 80) MasteredGreen else MaterialTheme.colorScheme.primary
+                    color = if (lesson.masteryPercent >= 80) MasteredGreen else JapaneseCrimson
                 )
             }
         }

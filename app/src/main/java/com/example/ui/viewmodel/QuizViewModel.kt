@@ -318,7 +318,7 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
 
         // Auto play audio for listening challenge
         if (quizType == QuizType.LISTENING_CHALLENGE && quizQuestions.isNotEmpty()) {
-            ttsHelper.speak(quizQuestions[0].card.kanji, 1.0f)
+            ttsHelper.speakCard(quizQuestions[0].card, rate = 1.0f)
         }
 
         startTimer(initialSeconds)
@@ -399,8 +399,8 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
             repository.recordCardQuizOutcome(currentQuestion.card.id, isCorrect)
         }
 
-        // Pronounce Japanese word via TTS
-        ttsHelper.speak(currentQuestion.card.kanji, state.speechRate)
+        // Pronounce Japanese word via TTS with clean speech normalizer
+        ttsHelper.speakCard(currentQuestion.card, rate = state.speechRate)
     }
 
     fun useFiftyFifty() {
