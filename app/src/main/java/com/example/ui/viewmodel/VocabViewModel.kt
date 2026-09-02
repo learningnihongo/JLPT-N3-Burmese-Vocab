@@ -1170,6 +1170,27 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
         _sessionStats.value = SessionStudyStats()
     }
 
+    /**
+     * Dispatches an immediate SRS due review session. If no cards are specifically due yet,
+     * seeds the session with cards needing practice or unreviewed cards.
+     */
+    fun startDueCardsStudySession(
+        mode: FlashcardStudyMode = FlashcardStudyMode.JP_TO_MY,
+        onSuccess: (List<VocabCard>) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            val dueCards = repository.getDueCardsDirect(System.currentTimeMillis())
+            val cardsToStudy = if (dueCards.isNotEmpty()) {
+                dueCards
+            } else {
+                val all = repository.getAllCardsDirect()
+                all.filter { it.masteryLevel < 3 }.ifEmpty { all }.take(15)
+            }
+            startStudySession(cardsToStudy, mode)
+            onSuccess(cardsToStudy)
+        }
+    }
+
     fun flipCard() {
         _isCardFlipped.value = !_isCardFlipped.value
     }

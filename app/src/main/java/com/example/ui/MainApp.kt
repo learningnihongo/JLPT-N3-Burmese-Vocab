@@ -72,11 +72,13 @@ import com.example.ui.theme.KanjiKotobaTheme
 import com.example.ui.theme.ThemeMode
 import com.example.ui.viewmodel.QuizViewModel
 import com.example.ui.viewmodel.VocabFilterType
+import androidx.compose.runtime.LaunchedEffect
 import com.example.ui.viewmodel.VocabViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainApp(
+    initialDestination: String? = null,
     vocabViewModel: VocabViewModel = viewModel(),
     quizViewModel: QuizViewModel = viewModel()
 ) {
@@ -86,6 +88,14 @@ fun MainApp(
         val navController = rememberNavController()
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = navBackStackEntry?.destination?.route ?: Screen.Home.route
+
+        LaunchedEffect(initialDestination) {
+            if (initialDestination == "study") {
+                vocabViewModel.startDueCardsStudySession {
+                    navController.navigate(Screen.Study.route)
+                }
+            }
+        }
 
         var showAddCustomDialog by remember { mutableStateOf(false) }
 

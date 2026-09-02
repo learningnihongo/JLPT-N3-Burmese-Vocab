@@ -27,6 +27,12 @@ interface VocabDao {
     @Query("SELECT * FROM vocab_cards WHERE nextReviewTimestamp <= :currentTimeMs OR repetitions = 0 ORDER BY nextReviewTimestamp ASC")
     fun getDueCards(currentTimeMs: Long): Flow<List<VocabCard>>
 
+    @Query("SELECT * FROM vocab_cards WHERE nextReviewTimestamp <= :currentTimeMs OR repetitions = 0 ORDER BY nextReviewTimestamp ASC")
+    suspend fun getDueCardsDirect(currentTimeMs: Long): List<VocabCard>
+
+    @Query("SELECT * FROM vocab_cards ORDER BY lessonNumber ASC, id ASC")
+    suspend fun getAllCardsDirect(): List<VocabCard>
+
     @Query("""
         SELECT * FROM vocab_cards 
         WHERE kanji LIKE '%' || :query || '%' 

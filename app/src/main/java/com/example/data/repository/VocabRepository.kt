@@ -54,6 +54,12 @@ class VocabRepository(
     fun getDueCards(currentTimeMs: Long = System.currentTimeMillis()): Flow<List<VocabCard>> =
         vocabDao.getDueCards(currentTimeMs)
 
+    suspend fun getDueCardsDirect(currentTimeMs: Long = System.currentTimeMillis()): List<VocabCard> =
+        vocabDao.getDueCardsDirect(currentTimeMs)
+
+    suspend fun getAllCardsDirect(): List<VocabCard> =
+        vocabDao.getAllCardsDirect()
+
     fun getMasteredCards(): Flow<List<VocabCard>> = vocabDao.getMasteredCards()
 
     fun getWeakCards(): Flow<List<VocabCard>> = vocabDao.getWeakCards()
