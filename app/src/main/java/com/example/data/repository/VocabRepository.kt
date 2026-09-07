@@ -25,8 +25,8 @@ class VocabRepository(
         if (forceRefresh) {
             vocabDao.clearNonCustomCards()
             vocabDao.insertCards(allCards)
-        } else if (count != allCards.size) {
-            // Insert missing cards without clearing existing cards, keeping all user progress and bookmarks safe
+        } else if (count < allCards.size) {
+            // Safe non-destructive insert: OnConflictStrategy.IGNORE retains all existing cards and user progress
             vocabDao.insertCards(allCards)
         }
         val profile = userProfileDao.getProfile().firstOrNull()

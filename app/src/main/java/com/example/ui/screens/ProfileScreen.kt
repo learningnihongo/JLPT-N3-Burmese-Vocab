@@ -4,6 +4,10 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -31,12 +35,16 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -48,7 +56,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -83,7 +90,6 @@ import com.example.ui.theme.JapaneseCrimson
 import com.example.ui.theme.JapaneseIndigo
 import com.example.ui.theme.MasteredGreen
 import com.example.ui.theme.PolishOutlineVariant
-import com.example.ui.theme.SakuraPinkDark
 import com.example.ui.theme.StreakOrange
 import com.example.ui.viewmodel.VocabViewModel
 
@@ -116,27 +122,22 @@ fun ProfileScreen(
 
     var showEditProfileDialog by remember { mutableStateOf(false) }
     var selectedBadgeForDetail by remember { mutableStateOf<Badge?>(null) }
+    var selectedTabIndex by remember { mutableIntStateOf(0) }
 
-    // Android Photo Picker launcher for zero-permission gallery selection
-    val photoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri: Uri? ->
-        if (uri != null) {
-            vocabViewModel.updateAvatar(
-                avatarIndex = profile?.avatarIndex ?: 0,
-                customAvatarUri = uri.toString()
-            )
-        }
-    }
+    val tabs = listOf(
+        Triple("Preferences", Icons.Default.Tune, "Settings & Audio"),
+        Triple("Achievements", Icons.Default.EmojiEvents, "Badges & Rhythm"),
+        Triple("System Info", Icons.Default.Info, "Offline & Details")
+    )
 
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
             .testTag("profile_screen"),
-        contentPadding = PaddingValues(bottom = 96.dp, top = 20.dp, start = 20.dp, end = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+        contentPadding = PaddingValues(bottom = 96.dp, top = 16.dp, start = 20.dp, end = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // 1. Clean Profile & Level Header Card with Custom User Avatar
+        // 1. Clean & Elegant Profile Header Card
         item {
             Card(
                 modifier = Modifier
@@ -150,10 +151,10 @@ fun ProfileScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(22.dp),
-                    verticalArrangement = Arrangement.spacedBy(18.dp)
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Profile Info & Avatar + Edit Button
+                    // Avatar + Profile Info + Edit Profile Button
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -161,10 +162,10 @@ fun ProfileScreen(
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
                             modifier = Modifier.weight(1f)
                         ) {
-                            // User Avatar with Photo Upload badge
+                            // User Avatar (Clickable to change photo/profile)
                             Box(
                                 modifier = Modifier
                                     .size(68.dp)
@@ -174,7 +175,7 @@ fun ProfileScreen(
                                 if (!profile?.customAvatarUri.isNullOrBlank()) {
                                     AsyncImage(
                                         model = profile?.customAvatarUri,
-                                        contentDescription = "User Profile Picture",
+                                        contentDescription = "Profile Picture",
                                         contentScale = ContentScale.Crop,
                                         modifier = Modifier
                                             .fillMaxSize()
@@ -214,7 +215,7 @@ fun ProfileScreen(
                                     }
                                 }
 
-                                // Small Camera Edit Badge overlay
+                                // Small Camera Badge
                                 Box(
                                     modifier = Modifier
                                         .size(22.dp)
@@ -232,59 +233,91 @@ fun ProfileScreen(
                                 }
                             }
 
+                            // Profile Name and JLPT Targets
                             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                                 Text(
-                                    text = profile?.name ?: "JLPT Scholar",
-                                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 19.sp),
-                                    fontWeight = FontWeight.Bold,
+                                    text = profile?.name ?: "Sensei Student",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold
+                                    ),
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
-                                Text(
-                                    text = "Target: JLPT ${profile?.targetJlptLevel ?: "N3"} • ${profile?.dailyGoal ?: 15} words/day",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Surface(
+                                        shape = RoundedCornerShape(50),
+                                        color = JapaneseCrimson.copy(alpha = 0.1f),
+                                        border = BorderStroke(0.8.dp, JapaneseCrimson.copy(alpha = 0.3f))
+                                    ) {
+                                        Text(
+                                            text = "JLPT ${profile?.targetJlptLevel ?: "N3"}",
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 10.sp),
+                                            color = JapaneseCrimson,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                        )
+                                    }
+
+                                    Surface(
+                                        shape = RoundedCornerShape(50),
+                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                    ) {
+                                        Text(
+                                            text = "${profile?.dailyGoal ?: 15} words/day",
+                                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+
                                 Text(
                                     text = profile?.levelTitle ?: "Novice Learner",
-                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = JapaneseCrimson
+                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                                    color = MaterialTheme.colorScheme.outline
                                 )
                             }
                         }
 
-                        IconButton(
+                        // Edit Button
+                        OutlinedButton(
                             onClick = { showEditProfileDialog = true },
-                            modifier = Modifier
-                                .size(38.dp)
-                                .background(
-                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                    CircleShape
-                                )
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Edit,
                                 contentDescription = "Edit Profile",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Edit",
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
 
-                    // Level & XP Progress
+                    // Level & XP Bar
                     val xp = profile?.totalXp ?: 0
                     val currentLevel = profile?.level ?: 1
                     val currentLevelProgress = (xp % 150).toFloat() / 150f
 
                     Surface(
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(14.dp),
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.08f)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(
-                            modifier = Modifier.padding(14.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -299,7 +332,7 @@ fun ProfileScreen(
                                         imageVector = Icons.Default.Star,
                                         contentDescription = null,
                                         tint = StreakOrange,
-                                        modifier = Modifier.size(18.dp)
+                                        modifier = Modifier.size(16.dp)
                                     )
                                     Text(
                                         text = "Level $currentLevel",
@@ -309,7 +342,7 @@ fun ProfileScreen(
                                 }
 
                                 Text(
-                                    text = "$xp Total XP",
+                                    text = "$xp XP Total",
                                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
                                     color = MaterialTheme.colorScheme.primary
                                 )
@@ -326,8 +359,8 @@ fun ProfileScreen(
                             )
 
                             Text(
-                                text = "${150 - (xp % 150)} XP to Level ${currentLevel + 1}",
-                                style = MaterialTheme.typography.labelSmall,
+                                text = "${150 - (xp % 150)} XP to reach Level ${currentLevel + 1}",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
                                 color = MaterialTheme.colorScheme.outline
                             )
                         }
@@ -336,11 +369,11 @@ fun ProfileScreen(
             }
         }
 
-        // 2. Learning Overview Metrics (Clean 4-Box Grid)
+        // 2. Clean 4-Tile Learning Stats Summary
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(22.dp),
+                shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -348,18 +381,18 @@ fun ProfileScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
                         text = "Learning Overview",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onSurface
                     )
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         ProfileStatTile(
                             title = "Mastered",
@@ -379,7 +412,7 @@ fun ProfileScreen(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         ProfileStatTile(
                             title = "Streak",
@@ -389,8 +422,8 @@ fun ProfileScreen(
                             modifier = Modifier.weight(1f)
                         )
                         ProfileStatTile(
-                            title = "Total Cards",
-                            value = "$totalCards",
+                            title = "Total Library",
+                            value = "$totalCards Words",
                             icon = Icons.Default.School,
                             color = JapaneseIndigo,
                             modifier = Modifier.weight(1f)
@@ -400,131 +433,256 @@ fun ProfileScreen(
             }
         }
 
-        // 3. Weekly Progress Visualization: Kanji Mastered vs. Reviewed
-        item {
-            WeeklyMasteryProgressChartCard(
-                weeklySummary = weeklyProgressSummary
-            )
-        }
-
-        // 4. Daily Study Reminder Settings
-        item {
-            DailyReminderSettingsCard(
-                settings = reminderSettings,
-                onToggleEnabled = { enabled ->
-                    vocabViewModel.setReminderEnabled(enabled)
-                },
-                onUpdateTime = { hour, minute ->
-                    vocabViewModel.setReminderTime(hour, minute)
-                },
-                onToggleSmartReminder = { smart ->
-                    vocabViewModel.setSmartReminderEnabled(smart)
-                },
-                onTestReminder = {
-                    vocabViewModel.triggerTestReminder()
-                }
-            )
-        }
-
-        // 5. Voice & Japanese Pronunciation Settings
-        item {
-            VoiceSettingsCard(
-                settings = voiceSettings,
-                isSpeaking = isSpeaking,
-                onUpdateSpeed = { speed ->
-                    vocabViewModel.setVoiceSpeechRate(speed)
-                },
-                onUpdatePitch = { pitch ->
-                    vocabViewModel.setVoicePitch(pitch)
-                },
-                onTogglePhonetic = { phonetic ->
-                    vocabViewModel.setVoicePreferPhonetic(phonetic)
-                },
-                onToggleAutoPlayFlip = { autoFlip ->
-                    vocabViewModel.setVoiceAutoPlayFlip(autoFlip)
-                },
-                onTestVoice = {
-                    vocabViewModel.testVoicePronunciation()
-                }
-            )
-        }
-
-        // 6. Appearance & Theme Settings
-        item {
-            AppThemeSettingsCard(
-                themeSettings = themeSettings,
-                onSelectMode = { mode ->
-                    vocabViewModel.setThemeMode(mode)
-                },
-                onSelectPalette = { palette ->
-                    vocabViewModel.setThemePalette(palette)
-                },
-                onSelectIconStyle = { style ->
-                    vocabViewModel.setIconThemeStyle(style)
-                },
-                onToggleOledBlack = { oled ->
-                    vocabViewModel.setOledBlack(oled)
-                }
-            )
-        }
-
-        // 7. Digital Trophies & Milestones Showcase
-        item {
-            TrophyShowcaseCard(
-                badges = badges,
-                onBadgeClick = { badge ->
-                    selectedBadgeForDetail = badge
-                }
-            )
-        }
-
-        // 8. Offline Ready Status (Minimalist Tile)
+        // 3. Clean Segmented Category Tabs (Preferences, Achievements, System Info)
         item {
             Surface(
-                modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.08f)),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        .padding(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(34.dp)
-                            .clip(CircleShape)
-                            .background(MasteredGreen.copy(alpha = 0.1f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CloudDone,
-                            contentDescription = "Offline Ready",
-                            tint = MasteredGreen,
-                            modifier = Modifier.size(18.dp)
-                        )
+                    tabs.forEachIndexed { index, (label, icon, _) ->
+                        val isSelected = selectedTabIndex == index
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isSelected) MaterialTheme.colorScheme.surface else Color.Transparent,
+                            border = if (isSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)) else null,
+                            shadowElevation = if (isSelected) 1.dp else 0.dp,
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable { selectedTabIndex = index }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 10.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = null,
+                                    tint = if (isSelected) JapaneseCrimson else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        fontSize = 11.5.sp
+                                    ),
+                                    color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 4. Tabbed Content (Clean & Organized, Avoiding Endless Monolithic Scroll)
+        item {
+            AnimatedContent(
+                targetState = selectedTabIndex,
+                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                label = "profile_tabs_content"
+            ) { tabIndex ->
+                when (tabIndex) {
+                    0 -> {
+                        // TAB 0: Preferences & Settings (Reminders, Voice Audio, Theme)
+                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            DailyReminderSettingsCard(
+                                settings = reminderSettings,
+                                onToggleEnabled = { enabled ->
+                                    vocabViewModel.setReminderEnabled(enabled)
+                                },
+                                onUpdateTime = { hour, minute ->
+                                    vocabViewModel.setReminderTime(hour, minute)
+                                },
+                                onToggleSmartReminder = { smart ->
+                                    vocabViewModel.setSmartReminderEnabled(smart)
+                                },
+                                onTestReminder = {
+                                    vocabViewModel.triggerTestReminder()
+                                }
+                            )
+
+                            VoiceSettingsCard(
+                                settings = voiceSettings,
+                                isSpeaking = isSpeaking,
+                                onUpdateSpeed = { speed ->
+                                    vocabViewModel.setVoiceSpeechRate(speed)
+                                },
+                                onUpdatePitch = { pitch ->
+                                    vocabViewModel.setVoicePitch(pitch)
+                                },
+                                onTogglePhonetic = { phonetic ->
+                                    vocabViewModel.setVoicePreferPhonetic(phonetic)
+                                },
+                                onToggleAutoPlayFlip = { autoFlip ->
+                                    vocabViewModel.setVoiceAutoPlayFlip(autoFlip)
+                                },
+                                onTestVoice = {
+                                    vocabViewModel.testVoicePronunciation()
+                                }
+                            )
+
+                            AppThemeSettingsCard(
+                                themeSettings = themeSettings,
+                                onSelectMode = { mode ->
+                                    vocabViewModel.setThemeMode(mode)
+                                },
+                                onSelectPalette = { palette ->
+                                    vocabViewModel.setThemePalette(palette)
+                                },
+                                onSelectIconStyle = { style ->
+                                    vocabViewModel.setIconThemeStyle(style)
+                                },
+                                onToggleOledBlack = { oled ->
+                                    vocabViewModel.setOledBlack(oled)
+                                }
+                            )
+                        }
                     }
 
-                    Column {
-                        Text(
-                            text = "Offline Mode Active",
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "All vocabulary, pronunciation audio, and progress stored locally.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    1 -> {
+                        // TAB 1: Achievements & Progress Rhythm (Weekly Chart + Badges Showcase)
+                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            WeeklyMasteryProgressChartCard(
+                                weeklySummary = weeklyProgressSummary
+                            )
+
+                            TrophyShowcaseCard(
+                                badges = badges,
+                                onBadgeClick = { badge ->
+                                    selectedBadgeForDetail = badge
+                                }
+                            )
+                        }
+                    }
+
+                    2 -> {
+                        // TAB 2: System Info & Offline Details
+                        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                            // Offline Status Tile
+                            Card(
+                                shape = RoundedCornerShape(18.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(18.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(42.dp)
+                                            .clip(CircleShape)
+                                            .background(MasteredGreen.copy(alpha = 0.12f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.CloudDone,
+                                            contentDescription = "Offline Ready",
+                                            tint = MasteredGreen,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                    }
+
+                                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                        Text(
+                                            text = "100% Offline Storage Active",
+                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = "All 880 JLPT N3 cards, Burmese meanings, audio pronunciations, and spaced repetition states are stored securely on this device.",
+                                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Storage Breakdown Card
+                            Card(
+                                shape = RoundedCornerShape(18.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(18.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Storage,
+                                            contentDescription = null,
+                                            tint = JapaneseIndigo,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Text(
+                                            text = "Curriculum & Database Overview",
+                                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+
+                                    StorageInfoRow("Target Level", "JLPT N3 (Intermediate)")
+                                    StorageInfoRow("Total Vocabulary", "$totalCards Core Words")
+                                    StorageInfoRow("Spaced Repetition Algorithm", "SuperMemo SM-2 Adapted")
+                                    StorageInfoRow("Audio Synthesis", "Android Native Japanese TTS")
+                                    StorageInfoRow("Local Storage Engine", "Android Jetpack Room SQLite")
+                                }
+                            }
+
+                            // Study Tip Card
+                            Surface(
+                                shape = RoundedCornerShape(18.dp),
+                                color = JapaneseCrimson.copy(alpha = 0.05f),
+                                border = BorderStroke(1.dp, JapaneseCrimson.copy(alpha = 0.18f)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(
+                                        text = "💡 Daily Study Recommendation",
+                                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                                        color = JapaneseCrimson
+                                    )
+                                    Text(
+                                        text = "Reviewing 15 to 20 cards every day consistently produces higher retention than studying 100 cards once a week. Keep your daily streak going to build lasting memory!",
+                                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
     }
 
+    // Badge details dialog
     selectedBadgeForDetail?.let { badge ->
         BadgeDetailDialog(
             badge = badge,
@@ -532,9 +690,10 @@ fun ProfileScreen(
         )
     }
 
+    // Clean Edit Profile Dialog
     if (showEditProfileDialog) {
         EditProfileWithAvatarDialog(
-            currentName = profile?.name ?: "JLPT Scholar",
+            currentName = profile?.name ?: "Sensei Student",
             currentGoal = profile?.dailyGoal ?: 15,
             currentLevel = profile?.targetJlptLevel ?: "N3",
             currentAvatarIndex = profile?.avatarIndex ?: 0,
@@ -571,7 +730,7 @@ private fun ProfileStatTile(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
+                .padding(horizontal = 12.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
@@ -590,19 +749,42 @@ private fun ProfileStatTile(
                 )
             }
 
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Text(
                     text = value,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun StorageInfoRow(
+    label: String,
+    value: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
@@ -660,7 +842,7 @@ private fun EditProfileWithAvatarDialog(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(80.dp)
+                            .size(76.dp)
                             .clip(CircleShape)
                             .clickable {
                                 photoPickerLauncher.launch(
@@ -690,7 +872,7 @@ private fun EditProfileWithAvatarDialog(
                             ) {
                                 Text(
                                     text = preset?.first ?: "🧑‍🏫",
-                                    fontSize = 38.sp
+                                    fontSize = 36.sp
                                 )
                             }
                         }
@@ -752,7 +934,7 @@ private fun EditProfileWithAvatarDialog(
                     }
                 }
 
-                // Preset Avatars Selection (when custom photo isn't selected or as backup)
+                // Preset Avatars Selection
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
                         text = "Or Select Preset Avatar:",

@@ -45,6 +45,12 @@ enum class VocabFilterType {
     MASTERED
 }
 
+enum class SearchFilterTarget(val label: String, val burmeseLabel: String, val subtitle: String) {
+    ALL("All", "အားလုံး", "Kanji, Reading, Meaning"),
+    READING("Reading", "ဖတ်နည်း", "Hiragana, Katakana, Romaji"),
+    MEANING("Meaning", "အဓိပ္ပာယ်", "Burmese & English meanings")
+}
+
 enum class StatsTimeRange(val days: Int, val label: String) {
     DAYS_7(7, "7 Days"),
     DAYS_14(14, "14 Days"),
@@ -245,6 +251,13 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
 
+    private val _searchFilterTarget = MutableStateFlow(SearchFilterTarget.ALL)
+    val searchFilterTarget = _searchFilterTarget.asStateFlow()
+
+    fun setSearchFilterTarget(target: SearchFilterTarget) {
+        _searchFilterTarget.value = target
+    }
+
     private val _currentFilter = MutableStateFlow(VocabFilterType.ALL)
     val currentFilter = _currentFilter.asStateFlow()
 
@@ -312,14 +325,44 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
     // 2b. Kanji Categories Mastery Stats Flow
     val kanjiCategoryStats: StateFlow<List<KanjiCategoryMastery>> = repository.getAllCards().map { cards ->
         val categoryDefinitions = listOf(
-            Triple("cat_human", "Human & Relations", "人間関係・性格") to (listOf(1, 2) to "👥"),
-            Triple("cat_daily", "Daily Life & Living", "日常生活・暮らし") to (listOf(3, 4, 5) to "🏠"),
-            Triple("cat_school", "School & Education", "学校・教育・学習") to (listOf(6, 7) to "🎓"),
-            Triple("cat_work", "Work & Workplace", "仕事・職場・ビジネス") to (listOf(8, 9) to "💼"),
-            Triple("cat_society", "Society & Economy", "社会・政治・経済") to (listOf(10, 11, 12) to "🏙️"),
-            Triple("cat_nature", "Nature & Travel", "自然・環境・旅行") to (listOf(13, 14) to "🌿"),
-            Triple("cat_health", "Science & Health", "科学・医療・健康") to (listOf(15, 16) to "🔬"),
-            Triple("cat_action", "Action & Abstract", "行動・状態・思考") to (listOf(17, 18, 19, 20, 21, 22) to "⚡")
+            Triple("cat_human", "People & Relations", "人間関係・一生・生活") to ((1..6).toList() to "👥"),
+            Triple("cat_verbs1", "Basic Verbs I", "基本動詞・身体動作") to ((7..11).toList() to "⚡"),
+            Triple("cat_adj1", "Action Nouns & Adjectives I", "派生名詞・形容詞") to ((12..16).toList() to "✨"),
+            Triple("cat_society", "Society, Work & Information", "社会・経営・情報・位置") to ((17..21).toList() to "🏙️"),
+            Triple("cat_verbs2", "Movement & Action Verbs II", "変化・移動・身体動作") to ((22..26).toList() to "🏃"),
+            Triple("cat_katakana", "Katakana & Adjectives II", "カタカナ語・性質・評価") to ((27..30).toList() to "📱"),
+            Triple("cat_adverbs", "Adverbs, Health & Culture", "副詞・医療・文化・経済") to ((31..36).toList() to "🔬"),
+            Triple("cat_verbs3", "Advanced Verbs & Conjunctions", "発展動詞・調理・接続詞") to ((37..44).toList() to "📚"),
+            Triple("cat_animals", "Animals & Living Creatures (တိရစ္ဆာန်များ)", "動物・鳥類・昆虫・生物分類") to ((45..50).toList() to "🐾"),
+            Triple("cat_skz_daily", "Shinkanzen: Daily Life (နေ့စဉ်ဘဝနှင့်မြို့)", "新完全: 時間・家・町・料理・人間関係") to ((51..55).toList() to "🏡"),
+            Triple("cat_skz_health", "Shinkanzen: Body & Health (ခန္ဓာကိုယ်နှင့်ကျန်းမာရေး)", "新完全: 美容・健康・病気・怪我") to ((56..57).toList() to "🩺"),
+            Triple("cat_skz_hobby", "Shinkanzen: Sports & Fashion (အားကစားနှင့်ဖက်ရှင်)", "新完全: スポーツ・芸術・ファッション") to ((58..59).toList() to "🎨"),
+            Triple("cat_skz_travel_edu", "Shinkanzen: Travel & Education (ခရီးသွားနှင့်ပညာရေး)", "新完全: 旅行・移動・学校生活・大学") to ((60..62).toList() to "✈️"),
+            Triple("cat_skz_work_society", "Shinkanzen: Work & Society (အလုပ်နှင့်လူ့အဖွဲ့အစည်း)", "新完全: 就職・IT・事件事故・政治経済") to ((63..67).toList() to "💼"),
+            Triple("cat_skz_nature", "Shinkanzen: Nature & Measure (သဘာဝနှင့်အရေအတွက်)", "新完全: 自然・動植物・数と量・時間") to ((68..71).toList() to "🌿"),
+            Triple("cat_skz_applied", "Shinkanzen: Applied Skills (လက်တွေ့အသုံးချစွမ်းရည်)", "新完全: 和語・漢語・形容詞・副詞・擬音語") to ((72..79).toList() to "🎯"),
+            Triple("cat_hnin_rules", "Hnin: Kanji Rules & Formation (ဖွဲ့စည်းပုံစည်းမျဉ်း)", "第1部 漢字のルール・成り立ち") to ((80..82).toList() to "📐"),
+            Triple("cat_hnin_prefixes", "Hnin: Prefixes, Suffixes & Compounds (ရှေ့ဆက်/နောက်ဆက်)", "第2部 熟語を作る漢字・接頭語・接尾語") to ((83..86).toList() to "🔗"),
+            Triple("cat_hnin_society", "Hnin: Politics, Economy & Society (နိုင်ငံရေး/စီးပွားရေး)", "第3部 政治・経済・社会") to ((87..88).toList() to "🏛️"),
+            Triple("cat_hnin_life", "Hnin: Education, Culture & Daily Life (ပညာရေး/ယဉ်ကျေးမှု)", "第3部 教育・文化・生活") to ((89..93).toList() to "🎓"),
+            Triple("cat_hnin_travel", "Hnin: Traffic, Movement & Travel (လမ်းပန်း/ခရီးသွား)", "第3部 交通・旅行・方角") to ((94..95).toList() to "🚅"),
+            Triple("cat_hnin_onkun", "Hnin: Dual On-Kun Mastery (တရုတ်သံနှင့်ဂျပန်သံများ)", "第4部 音読みと訓読みを覚える漢字") to ((96..99).toList() to "🈴"),
+            Triple("cat_ess_plan", "Essential: Planning & Affairs (စီစဉ်ကြိုတင်မှုနှင့် ကိစ္စရပ်များ)", "漢字言葉: 計画・事柄・交通") to ((100..101).toList() to "📋"),
+            Triple("cat_ess_mind", "Essential: Mind & Society (စိတ်ခံစားမှုနှင့် လူမှုဘဝ)", "漢字言葉: 復習・心構え・人間関係") to ((102..103).toList() to "👥"),
+            Triple("cat_ess_commerce", "Essential: Commerce & Production (ထုတ်ကုန်နှင့် အရောင်းအဝယ်)", "漢字言葉: 公共・安全・商品・製造") to ((104..105).toList() to "🏬"),
+            Triple("cat_ess_society", "Essential: Society & Transport (လူမှုပတ်ဝန်းကျင်နှင့် သွားလာရေး)", "漢字言葉: 単位・社会活動・運行・移動") to ((106..107).toList() to "🚦"),
+            Triple("cat_ess_urban", "Essential: Urban Living & Tech (မြို့ပြလူနေမှုနှင့် နည်းပညာ)", "漢字言葉: 部屋・郵便・自然現象・技術") to ((108..109).toList() to "🏙️"),
+            Triple("cat_ess_edu_tech", "Essential: Education & Self (ပညာရေးနှင့် နေ့စဉ်ဘဝ)", "漢字言葉: 指示・通信・教育・日常") to ((110..111).toList() to "📱"),
+            Triple("cat_ess_career", "Essential: Career & Documents (အလုပ်အကိုင်နှင့် စာရွက်စာတမ်း)", "漢字言葉: 貿易・職業・書類・案内") to ((112..113).toList() to "💼"),
+            Triple("cat_ess_economy", "Essential: Economy & Application (စီးပွားရေးနှင့် လျှောက်လွှာ)", "漢字言葉: 経済・約束・正確・申請") to ((114..115).toList() to "📈"),
+            Triple("cat_ess_relations", "Essential: Relations & Labor (ပတ်သက်ဆက်နွယ်မှုနှင့် အဖွဲ့အစည်း)", "漢字言葉: 関係・移動・団体・労働") to ((116..117).toList() to "🤝"),
+            Triple("cat_ess_daily_affix", "Essential: Daily Living & Affixes (နေ့စဉ်သုံးစကားနှင့် ရှေ့ဆက်/နောက်ဆက်)", "漢字言葉: 営業・生活・医療・接頭接尾") to ((118..119).toList() to "🏷️"),
+            Triple("cat_mas_action_feel", "Mastery: Actions, Living & Emotions (အပြုအမူနှင့် ခံစားမှု)", "漢字マスター: 行動・生活・感情・人間関係") to ((120..121).toList() to "🌟"),
+            Triple("cat_mas_family_work", "Mastery: Family, Roles & Workplace (မိသားစုနှင့် လုပ်ငန်းခွင်)", "漢字マスター: 家族・役割・職場・能力") to ((122..123).toList() to "👨‍👩‍👧"),
+            Triple("cat_mas_plan_habit", "Mastery: Healthcare, Plans & Habits (ကျန်းမာရေးနှင့် အလေ့အကျင့်)", "漢字マスター: 医療・態度・挑戦・習慣") to ((124..125).toList() to "🧘"),
+            Triple("cat_mas_nature_rules", "Mastery: Nature, Culture & Rules (သဘာဝ၊ ရိုးရာနှင့် ဥပဒေ)", "漢字マスター: 自然・伝統・規則・人間性") to ((126..127).toList() to "⛩️"),
+            Triple("cat_mas_society_mind", "Mastery: Society, Careers & Mind (စီးပွားရေး၊ အလုပ်နှင့် စိတ်ပိုင်းဆိုင်ရာ)", "漢字マスター: 経済・進路・人間・心理") to ((128..129).toList() to "💡"),
+            Triple("cat_mas_school_action", "Mastery: Facilities, Tourism & Problem Solving (ကျောင်း၊ ခရီးသွားနှင့် ဖြေရှင်းမှု)", "漢字マスター: 設備・学校・解決・観光") to ((130..131).toList() to "🎒")
         )
 
         categoryDefinitions.map { (catMeta, lessonData) ->
@@ -932,6 +975,7 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
 
     private data class VocabFilterParams(
         val query: String,
+        val target: SearchFilterTarget,
         val filter: VocabFilterType,
         val lesson: Int?,
         val tag: String?
@@ -940,20 +984,17 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
     @OptIn(ExperimentalCoroutinesApi::class)
     val filteredCards: StateFlow<List<VocabCard>> = combine(
         _searchQuery,
+        _searchFilterTarget,
         _currentFilter,
         _selectedLesson,
         _selectedTag
-    ) { query, filter, lesson, tag ->
-        VocabFilterParams(query, filter, lesson, tag)
-    }.flatMapLatest { (query, filter, lesson, tag) ->
-        val baseFlow = if (query.isNotBlank()) {
-            repository.searchCards(query)
-        } else if (tag != null) {
-            repository.getCardsByTag(tag)
-        } else if (lesson != null) {
-            repository.getCardsByLesson(lesson)
-        } else {
-            when (filter) {
+    ) { query, target, filter, lesson, tag ->
+        VocabFilterParams(query, target, filter, lesson, tag)
+    }.flatMapLatest { (query, target, filter, lesson, tag) ->
+        val baseFlow = when {
+            tag != null -> repository.getCardsByTag(tag)
+            lesson != null -> repository.getCardsByLesson(lesson)
+            else -> when (filter) {
                 VocabFilterType.ALL -> repository.getAllCards()
                 VocabFilterType.DUE_REVIEWS -> repository.getDueCards()
                 VocabFilterType.BOOKMARKED -> repository.getBookmarkedCards()
@@ -963,11 +1004,20 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
 
-        // If a tag is selected in conjunction with query/filter
-        if (tag != null && query.isNotBlank()) {
-            baseFlow.map { cards -> cards.filter { it.hasTag(tag) } }
-        } else {
-            baseFlow
+        baseFlow.map { cards ->
+            val scopedCards = if (tag != null && lesson != null) {
+                cards.filter { it.hasTag(tag) }
+            } else {
+                cards
+            }
+
+            if (query.isBlank()) {
+                scopedCards
+            } else {
+                scopedCards.filter { card ->
+                    com.example.ui.util.KanaHelper.matchesCard(card, query, target)
+                }
+            }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 

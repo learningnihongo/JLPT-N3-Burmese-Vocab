@@ -216,7 +216,7 @@ class ExampleRobolectricTest {
   @Test
   fun `quiz types have valid display names and badge labels`() {
     val types = com.example.ui.viewmodel.QuizType.values()
-    assertEquals(7, types.size)
+    assertEquals(9, types.size)
     types.forEach { type ->
       assertTrue(type.displayName.isNotBlank())
       assertTrue(type.badge.isNotBlank())

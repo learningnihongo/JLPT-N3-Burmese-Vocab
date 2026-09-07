@@ -81,6 +81,7 @@ import androidx.compose.ui.unit.sp
 import com.example.data.model.Badge
 import com.example.data.model.LessonProgress
 import com.example.data.model.VocabCard
+import com.example.ui.viewmodel.KanjiCategoryMastery
 import com.example.ui.components.BadgeDetailDialog
 import com.example.ui.theme.JapaneseCrimson
 import com.example.ui.theme.JapaneseIndigo
@@ -161,6 +162,7 @@ fun HomeScreen(
     val lessonProgressList by vocabViewModel.lessonProgressList.collectAsState()
     val allCards by vocabViewModel.filteredCards.collectAsState()
     val badges by vocabViewModel.allBadges.collectAsState()
+    val categoryStats by vocabViewModel.kanjiCategoryStats.collectAsState()
 
     var selectedBadgeForDetail by remember { mutableStateOf<Badge?>(null) }
     var lessonSearchQuery by remember { mutableStateOf("") }
@@ -634,6 +636,93 @@ fun HomeScreen(
             }
         }
 
+        // 4b. KANJI & VOCAB CATEGORIES (Organized groups: Shinkanzen, Hnin, Thematic)
+        if (categoryStats.isNotEmpty()) {
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = "Kanji Categories",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = JapaneseIndigo.copy(alpha = 0.12f)
+                                ) {
+                                    Text(
+                                        text = "${categoryStats.size} Categories",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                        fontWeight = FontWeight.Bold,
+                                        color = JapaneseIndigo,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                            Text(
+                                text = "ကဏ္ဍအလိုက် စနစ်တကျ လေ့လာရန်",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        TextButton(
+                            onClick = onNavigateToStats,
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = "All Stats",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = JapaneseCrimson
+                            )
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = null,
+                                tint = JapaneseCrimson,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(horizontal = 2.dp, vertical = 4.dp)
+                    ) {
+                        items(categoryStats, key = { it.categoryId }) { cat ->
+                            CategoryQuickCard(
+                                category = cat,
+                                onStudyCategory = {
+                                    val rangeNums = if (cat.lessonRange.contains("-")) {
+                                        val parts = cat.lessonRange.replace("Lessons ", "").replace("Lesson ", "").split("-")
+                                        val start = parts[0].trim().toIntOrNull() ?: 1
+                                        val end = parts.getOrNull(1)?.trim()?.toIntOrNull() ?: start
+                                        (start..end).toSet()
+                                    } else {
+                                        val num = cat.lessonRange.replace("Lesson ", "").trim().toIntOrNull() ?: 1
+                                        setOf(num)
+                                    }
+                                    val matchedCards = allCards.filter { it.lessonNumber in rangeNums }
+                                    if (matchedCards.isNotEmpty()) {
+                                        onStartStudy(matchedCards)
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         // 5. LESSON DIRECTORY SECTION (Structured, uncluttered)
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -930,6 +1019,107 @@ private fun LessonProgressCard(
                 color = if (isCompleted) MasteredGreen else JapaneseCrimson,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
+        }
+    }
+}
+
+@Composable
+private fun CategoryQuickCard(
+    category: KanjiCategoryMastery,
+    onStudyCategory: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .width(220.dp)
+            .testTag("home_category_card_${category.categoryId}")
+            .clickable { onStudyCategory() },
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.22f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(JapaneseIndigo.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = category.iconEmoji, fontSize = 20.sp)
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Text(
+                        text = "${category.totalCount} cards",
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                        fontWeight = FontWeight.Bold,
+                        color = JapaneseCrimson,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = category.categoryName,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = category.categoryJapanese,
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = category.lessonRange,
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                    color = JapaneseIndigo,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            // Progress + Percentage
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                LinearProgressIndicator(
+                    progress = { (category.masteryPercent / 100f).coerceIn(0.04f, 1f) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(50)),
+                    color = if (category.masteryPercent >= 80) MasteredGreen else JapaneseCrimson,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+                Text(
+                    text = "${category.masteryPercent.toInt()}%",
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                    fontWeight = FontWeight.Bold,
+                    color = if (category.masteryPercent >= 80) MasteredGreen else JapaneseCrimson
+                )
+            }
         }
     }
 }

@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,22 +17,32 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Translate
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -40,9 +51,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.VocabCard
@@ -53,6 +66,8 @@ import com.example.ui.components.PersonalNoteDialog
 import com.example.ui.components.VocabCardItem
 import com.example.ui.theme.JapaneseCrimson
 import com.example.ui.theme.PolishPrimary
+import com.example.ui.util.KanaHelper
+import com.example.ui.viewmodel.SearchFilterTarget
 import com.example.ui.viewmodel.VocabFilterType
 import com.example.ui.viewmodel.VocabViewModel
 
@@ -64,6 +79,7 @@ fun VocabBrowseScreen(
 ) {
     val cards by vocabViewModel.filteredCards.collectAsState()
     val searchQuery by vocabViewModel.searchQuery.collectAsState()
+    val searchFilterTarget by vocabViewModel.searchFilterTarget.collectAsState()
     val currentFilter by vocabViewModel.currentFilter.collectAsState()
     val selectedLesson by vocabViewModel.selectedLesson.collectAsState()
     val selectedTag by vocabViewModel.selectedTag.collectAsState()
@@ -85,31 +101,155 @@ fun VocabBrowseScreen(
                 .testTag("vocab_browse_screen"),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Search Input Bar
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { vocabViewModel.setSearchQuery(it) },
-                placeholder = { Text("Search Kanji, Reading, or Burmese...") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Search",
-                        tint = MaterialTheme.colorScheme.primary
+            // Search Input Bar with Quick Filter by Reading or Meaning
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { vocabViewModel.setSearchQuery(it) },
+                    placeholder = {
+                        Text(
+                            text = when (searchFilterTarget) {
+                                SearchFilterTarget.READING -> "Filter by reading (e.g. だんせい / dansei)..."
+                                SearchFilterTarget.MEANING -> "Filter by meaning (e.g. အမျိုးသား / man)..."
+                                SearchFilterTarget.ALL -> "Filter by reading, meaning, or Kanji..."
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search",
+                            tint = if (searchQuery.isNotEmpty()) JapaneseCrimson else MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(
+                                onClick = { vocabViewModel.setSearchQuery("") },
+                                modifier = Modifier.testTag("vocab_search_clear_button")
+                            ) {
+                                Icon(Icons.Default.Clear, contentDescription = "Clear search")
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = JapaneseCrimson,
+                        focusedLabelColor = JapaneseCrimson,
+                        cursorColor = JapaneseCrimson
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("vocab_search_field")
+                )
+
+                // Quick Scope Filter Chips (All, Reading, Meaning)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    FilterChip(
+                        selected = searchFilterTarget == SearchFilterTarget.ALL,
+                        onClick = { vocabViewModel.setSearchFilterTarget(SearchFilterTarget.ALL) },
+                        label = { Text("All Fields", fontSize = 12.sp) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = JapaneseCrimson.copy(alpha = 0.15f),
+                            selectedLabelColor = JapaneseCrimson,
+                            selectedLeadingIconColor = JapaneseCrimson
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.testTag("filter_scope_all")
                     )
-                },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { vocabViewModel.setSearchQuery("") }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Clear search")
+
+                    FilterChip(
+                        selected = searchFilterTarget == SearchFilterTarget.READING,
+                        onClick = { vocabViewModel.setSearchFilterTarget(SearchFilterTarget.READING) },
+                        label = { Text("Reading (ဖတ်နည်း)", fontSize = 12.sp) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = JapaneseCrimson.copy(alpha = 0.15f),
+                            selectedLabelColor = JapaneseCrimson,
+                            selectedLeadingIconColor = JapaneseCrimson
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.testTag("filter_scope_reading")
+                    )
+
+                    FilterChip(
+                        selected = searchFilterTarget == SearchFilterTarget.MEANING,
+                        onClick = { vocabViewModel.setSearchFilterTarget(SearchFilterTarget.MEANING) },
+                        label = { Text("Meaning (အဓိပ္ပာယ်)", fontSize = 12.sp) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Translate,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = JapaneseCrimson.copy(alpha = 0.15f),
+                            selectedLabelColor = JapaneseCrimson,
+                            selectedLeadingIconColor = JapaneseCrimson
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.testTag("filter_scope_meaning")
+                    )
+                }
+
+                // If user typed Romaji, show live Kana conversion badge
+                val hiraganaPreview = remember(searchQuery) {
+                    if (searchQuery.isNotBlank() && searchQuery.any { it in 'a'..'z' || it in 'A'..'Z' }) {
+                        val converted = KanaHelper.romajiToHiragana(searchQuery)
+                        if (converted.isNotBlank() && converted != searchQuery) converted else null
+                    } else null
+                }
+
+                if (hiraganaPreview != null) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    ) {
+                        Text(
+                            text = "Reading Kana:",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = JapaneseCrimson.copy(alpha = 0.08f),
+                            border = BorderStroke(1.dp, JapaneseCrimson.copy(alpha = 0.2f))
+                        ) {
+                            Text(
+                                text = "「$hiraganaPreview」",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = JapaneseCrimson,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
                         }
                     }
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("vocab_search_field")
-            )
+                }
+            }
 
             // Horizontal Filter Chips (Status & Deck type)
             LazyRow(
@@ -295,11 +435,93 @@ fun VocabBrowseScreen(
                         .weight(1f),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = if (selectedTag != null) "No cards tagged with #$selectedTag yet.\nOpen any card to add this tag!" else "No flashcards found matching this filter.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.outline
-                    )
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth(0.92f)
+                            .padding(16.dp)
+                            .testTag("search_empty_state_card"),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .clip(CircleShape)
+                                    .background(JapaneseCrimson.copy(alpha = 0.1f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = null,
+                                    tint = JapaneseCrimson,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+
+                            Text(
+                                text = if (searchQuery.isNotEmpty()) "No Matching Kanji Found" else "No Flashcards Found",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+
+                            Text(
+                                text = if (searchQuery.isNotEmpty()) {
+                                    "No flashcards match \"$searchQuery\" in ${searchFilterTarget.label}.\nTry searching in Hiragana, Romaji (e.g. \"dansei\"), or Burmese."
+                                } else if (selectedTag != null) {
+                                    "No cards tagged with #$selectedTag yet.\nOpen any card to add this tag!"
+                                } else {
+                                    "No flashcards found matching this filter."
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+
+                            if (searchFilterTarget != SearchFilterTarget.ALL && searchQuery.isNotEmpty()) {
+                                OutlinedButton(
+                                    onClick = { vocabViewModel.setSearchFilterTarget(SearchFilterTarget.ALL) },
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.testTag("search_all_fields_btn")
+                                ) {
+                                    Text("Search in All Fields")
+                                }
+                            }
+
+                            if (selectedLesson != null || selectedTag != null || currentFilter != VocabFilterType.ALL) {
+                                TextButton(
+                                    onClick = {
+                                        vocabViewModel.selectLesson(null)
+                                        vocabViewModel.selectTag(null)
+                                        vocabViewModel.setFilter(VocabFilterType.ALL)
+                                    },
+                                    modifier = Modifier.testTag("search_all_flashcards_btn")
+                                ) {
+                                    Text("Search Across All Flashcards")
+                                }
+                            }
+
+                            if (searchQuery.isNotEmpty()) {
+                                Button(
+                                    onClick = { vocabViewModel.setSearchQuery("") },
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = JapaneseCrimson),
+                                    modifier = Modifier.testTag("reset_search_btn")
+                                ) {
+                                    Text("Clear Search")
+                                }
+                            }
+                        }
+                    }
                 }
             } else {
                 LazyColumn(

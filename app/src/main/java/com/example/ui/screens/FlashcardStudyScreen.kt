@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -47,7 +48,10 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.BrightnessAuto
+import androidx.compose.material.icons.filled.CenterFocusStrong
+import androidx.compose.material.icons.filled.CenterFocusWeak
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Contrast
 import androidx.compose.material.icons.filled.DarkMode
@@ -64,6 +68,7 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.TextDecrease
 import androidx.compose.material.icons.filled.TextIncrease
@@ -86,6 +91,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -140,7 +146,10 @@ import com.example.ui.theme.SrsHardBg
 import com.example.ui.theme.SrsHardText
 import com.example.ui.theme.ThemeMode
 import com.example.ui.theme.WeakOrange
+import com.example.ui.components.DistractionFreeFlashcard
+import com.example.ui.util.KanaHelper
 import com.example.ui.viewmodel.FlashcardStudyMode
+import com.example.ui.viewmodel.SearchFilterTarget
 import com.example.ui.viewmodel.VocabViewModel
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -174,6 +183,7 @@ fun FlashcardStudyScreen(
     }
 
     var autoSpeakEnabled by remember { mutableStateOf(true) }
+    var isDistractionFreeMode by remember { mutableStateOf(false) }
     var showNoteDialog by remember { mutableStateOf(false) }
     var showJumpSheet by remember { mutableStateOf(false) }
     var showFontSheet by remember { mutableStateOf(false) }
@@ -535,6 +545,19 @@ fun FlashcardStudyScreen(
                         )
                     }
 
+                    // Distraction-Free Focus Mode Toggle
+                    IconButton(
+                        onClick = { isDistractionFreeMode = !isDistractionFreeMode },
+                        modifier = Modifier.testTag("zen_focus_mode_btn")
+                    ) {
+                        Icon(
+                            imageVector = if (isDistractionFreeMode) Icons.Default.CenterFocusStrong else Icons.Default.CenterFocusWeak,
+                            contentDescription = if (isDistractionFreeMode) "Disable Distraction-Free Mode" else "Enable Distraction-Free Mode",
+                            tint = if (isDistractionFreeMode) JapaneseCrimson else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
                     // Global Theme Toggle Button (Light/Dark Mode for Night Study)
                     IconButton(
                         onClick = { vocabViewModel.toggleDarkMode(isCurrentlyDark) },
@@ -570,11 +593,39 @@ fun FlashcardStudyScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Mode Selector Chips & Progress Row
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            if (isDistractionFreeMode) {
+                // Distraction-Free Zen Mode: Minimal progress and zero visual clutter
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(2.dp)),
+                    color = JapaneseCrimson,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                DistractionFreeFlashcard(
+                    card = currentCard,
+                    isRevealed = isFlipped,
+                    onRevealToggle = { vocabViewModel.flipCard() },
+                    onPlayAudio = { vocabViewModel.speakCard(currentCard) },
+                    onToggleBookmark = { vocabViewModel.toggleBookmark(currentCard) },
+                    fontScale = fontScale,
+                    showReadingInitially = showFurigana,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .testTag("distraction_free_study_card")
+                )
+            } else {
+                // Mode Selector Chips & Progress Row
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                 // Study Mode Switcher Chips
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -875,6 +926,43 @@ fun FlashcardStudyScreen(
                                                         Icon(Icons.Default.Speed, contentDescription = null, modifier = Modifier.size(13.dp))
                                                         Text("0.7x", fontSize = (10 * fontScale).coerceAtLeast(9f).sp, fontWeight = FontWeight.Bold)
                                                     }
+                                                }
+                                            }
+
+                                            Spacer(modifier = Modifier.height(18.dp))
+
+                                            // Dedicated Button to Reveal the Burmese Meaning
+                                            Button(
+                                                onClick = { vocabViewModel.flipCard() },
+                                                modifier = Modifier
+                                                    .fillMaxWidth(0.92f)
+                                                    .height(48.dp)
+                                                    .testTag("reveal_burmese_meaning_button"),
+                                                shape = RoundedCornerShape(16.dp),
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = JapaneseCrimson,
+                                                    contentColor = Color.White
+                                                ),
+                                                elevation = ButtonDefaults.buttonElevation(
+                                                    defaultElevation = 2.dp,
+                                                    pressedElevation = 0.dp
+                                                )
+                                            ) {
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.Center
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Visibility,
+                                                        contentDescription = "Reveal Meaning",
+                                                        modifier = Modifier.size(18.dp)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                    Text(
+                                                        text = "အဓိပ္ပာယ် ကြည့်မည် • Reveal Meaning",
+                                                        style = MaterialTheme.typography.titleSmall,
+                                                        fontWeight = FontWeight.Bold
+                                                    )
                                                 }
                                             }
                                         }
@@ -1209,6 +1297,7 @@ fun FlashcardStudyScreen(
                     }
                 }
             }
+            }
 
             Spacer(modifier = Modifier.height(10.dp))
 
@@ -1308,6 +1397,14 @@ fun FlashcardStudyScreen(
 
     // Modal Bottom Sheet for Quick Card Jump
     if (showJumpSheet) {
+        var jumpSearchQuery by remember { mutableStateOf("") }
+        val filteredDeckWithIndex = remember(deck, jumpSearchQuery) {
+            deck.mapIndexed { index, card -> Pair(index, card) }.filter { (_, card) ->
+                if (jumpSearchQuery.isBlank()) true
+                else KanaHelper.matchesCard(card, jumpSearchQuery, SearchFilterTarget.ALL)
+            }
+        }
+
         ModalBottomSheet(
             onDismissRequest = { showJumpSheet = false },
             sheetState = sheetState
@@ -1316,7 +1413,7 @@ fun FlashcardStudyScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1324,7 +1421,7 @@ fun FlashcardStudyScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Deck Overview (${deck.size} cards)",
+                        text = "Deck Overview (${filteredDeckWithIndex.size}/${deck.size} cards)",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -1333,44 +1430,92 @@ fun FlashcardStudyScreen(
                     }
                 }
 
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 64.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                // Search input to filter deck by reading or meaning
+                OutlinedTextField(
+                    value = jumpSearchQuery,
+                    onValueChange = { jumpSearchQuery = it },
+                    placeholder = { Text("Filter Kanji by reading or meaning...", fontSize = 13.sp) },
+                    leadingIcon = {
+                        Icon(Icons.Default.Search, contentDescription = "Search", modifier = Modifier.size(18.dp))
+                    },
+                    trailingIcon = {
+                        if (jumpSearchQuery.isNotEmpty()) {
+                            IconButton(onClick = { jumpSearchQuery = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Clear", modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(320.dp)
-                ) {
-                    itemsIndexed(deck) { index, card ->
-                        val isCurrent = index == currentIndex
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = if (isCurrent) JapaneseCrimson else MaterialTheme.colorScheme.surfaceVariant,
-                            border = if (isCurrent) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
-                            modifier = Modifier
-                                .height(56.dp)
-                                .clickable {
-                                    vocabViewModel.jumpToCard(index)
-                                    showJumpSheet = false
-                                }
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(4.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
+                        .testTag("jump_deck_search_field")
+                )
+
+                if (filteredDeckWithIndex.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No cards in deck match \"$jumpSearchQuery\"",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                    }
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(minSize = 68.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(300.dp)
+                    ) {
+                        items(
+                            items = filteredDeckWithIndex,
+                            key = { it.second.id }
+                        ) { item ->
+                            val originalIndex = item.first
+                            val card = item.second
+                            val isCurrent = originalIndex == currentIndex
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isCurrent) JapaneseCrimson else MaterialTheme.colorScheme.surfaceVariant,
+                                border = if (isCurrent) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+                                modifier = Modifier
+                                    .height(60.dp)
+                                    .clickable {
+                                        vocabViewModel.jumpToCard(originalIndex)
+                                        showJumpSheet = false
+                                    }
                             ) {
-                                Text(
-                                    text = card.kanji.take(3),
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isCurrent) Color.White else MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1
-                                )
-                                Text(
-                                    text = "#${index + 1}",
-                                    fontSize = 10.sp,
-                                    color = if (isCurrent) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.outline
-                                )
+                                Column(
+                                    modifier = Modifier.padding(4.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        text = card.kanji.take(3),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isCurrent) Color.White else MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1
+                                    )
+                                    Text(
+                                        text = card.reading.take(4),
+                                        fontSize = 9.sp,
+                                        color = if (isCurrent) Color.White.copy(alpha = 0.9f) else MaterialTheme.colorScheme.primary,
+                                        maxLines = 1
+                                    )
+                                    Text(
+                                        text = "#${originalIndex + 1}",
+                                        fontSize = 9.sp,
+                                        color = if (isCurrent) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.outline
+                                    )
+                                }
                             }
                         }
                     }

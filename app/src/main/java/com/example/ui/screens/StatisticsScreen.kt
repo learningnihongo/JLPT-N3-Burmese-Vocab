@@ -1,13 +1,11 @@
 package com.example.ui.screens
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -25,58 +23,33 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.MenuBook
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Quiz
-import androidx.compose.material.icons.filled.Radar
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -98,11 +71,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.model.Badge
 import com.example.data.model.VocabCard
-import com.example.ui.components.BadgeDetailDialog
-import com.example.ui.components.TrophyShowcaseCard
-import com.example.ui.components.VisualSummaryDashboardCard
 import com.example.ui.theme.JapaneseCrimson
 import com.example.ui.theme.JapaneseIndigo
 import com.example.ui.theme.MasteredGreen
@@ -111,9 +80,7 @@ import com.example.ui.theme.PolishOutlineVariant
 import com.example.ui.theme.PolishTertiary
 import com.example.ui.theme.ReviewBlue
 import com.example.ui.theme.StreakOrange
-import com.example.ui.theme.WeakOrange
 import com.example.ui.viewmodel.DailyStudyPoint
-import com.example.ui.viewmodel.LessonMasteryDetail
 import com.example.ui.viewmodel.MasteryBreakdown
 import com.example.ui.viewmodel.QuizTrendPoint
 import com.example.ui.viewmodel.QuizViewModel
@@ -121,16 +88,14 @@ import com.example.ui.viewmodel.StatsTimeRange
 import com.example.ui.viewmodel.VocabFilterType
 import com.example.ui.viewmodel.VocabViewModel
 
-enum class StatsTab(
+enum class StatsFilter(
     val title: String,
     val myanmarSubtitle: String,
     val icon: ImageVector
 ) {
-    OVERVIEW("Overview", "ခြုံငုံသုံးသပ်ချက်", Icons.Default.BarChart),
-    QUIZ("Quizzes", "စွမ်းဆောင်ရည်", Icons.Default.Quiz),
-    DEEP_DIVE("Analysis", "ခွဲခြမ်းစိတ်ဖြာမှု", Icons.Default.Radar),
-    LESSONS("Lessons", "သင်ခန်းစာများ", Icons.Default.MenuBook),
-    BADGES("Badges", "ဆုတံဆိပ်များ", Icons.Default.EmojiEvents)
+    ALL("All Stats", "အားလုံး", Icons.Default.BarChart),
+    MASTERY("Study & Mastery", "လေ့လာမှု", Icons.Default.MenuBook),
+    QUIZ("Quiz Performance", "စစ်ဆေးမှု", Icons.Default.Quiz)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -145,38 +110,12 @@ fun StatisticsScreen(
     val profile by vocabViewModel.userProfile.collectAsState()
     val masteryBreakdown by vocabViewModel.masteryBreakdown.collectAsState()
     val dailyStats by vocabViewModel.dailyStudyStats.collectAsState()
-    val lessonStats by vocabViewModel.lessonMasteryStats.collectAsState()
     val accuracySummary by vocabViewModel.accuracySummary.collectAsState()
     val quizTrend by vocabViewModel.quizTrendStats.collectAsState()
     val selectedTimeRange by vocabViewModel.statsTimeRange.collectAsState()
-    val allCards by vocabViewModel.filteredCards.collectAsState()
-    val dueCount by vocabViewModel.dueCount.collectAsState()
-    val badges by vocabViewModel.allBadges.collectAsState()
-    val categoryStats by vocabViewModel.kanjiCategoryStats.collectAsState()
-    val streakSummary by vocabViewModel.dailyStreakSummary.collectAsState()
 
-    var selectedTab by remember { mutableStateOf(StatsTab.OVERVIEW) }
+    var selectedFilter by remember { mutableStateOf(StatsFilter.ALL) }
     var selectedDayIndex by remember { mutableStateOf<Int?>(null) }
-    var selectedLessonFilter by remember { mutableStateOf("") }
-    var lessonMasteryFilter by remember { mutableStateOf("ALL") } // "ALL", "MASTERED", "IN_PROGRESS", "NEEDS_REVIEW"
-    var selectedBadgeForDetail by remember { mutableStateOf<Badge?>(null) }
-
-    val filteredLessons = remember(lessonStats, selectedLessonFilter, lessonMasteryFilter) {
-        lessonStats.filter { lesson ->
-            val matchesText = if (selectedLessonFilter.isBlank()) true
-            else {
-                lesson.lessonTitle.contains(selectedLessonFilter, ignoreCase = true) ||
-                        lesson.lessonNumber.toString().contains(selectedLessonFilter)
-            }
-            val matchesFilter = when (lessonMasteryFilter) {
-                "MASTERED" -> lesson.masteryPercent >= 80f
-                "IN_PROGRESS" -> lesson.masteryPercent in 20f..79.9f
-                "NEEDS_REVIEW" -> lesson.dueCount > 0 || lesson.masteryPercent < 20f
-                else -> true
-            }
-            matchesText && matchesFilter
-        }
-    }
 
     LazyColumn(
         modifier = Modifier
@@ -321,24 +260,23 @@ fun StatisticsScreen(
             }
         }
 
-        // 2. Clean Segmented Tab Switcher (Makes the UI neat, scannable & clutter-free)
+        // 2. Clean Segmented Category Filter (All Stats, Study & Mastery, Quiz Performance)
         item {
-            ScrollableTabRow(
-                selectedTabIndex = selectedTab.ordinal,
+            PrimaryTabRow(
+                selectedTabIndex = selectedFilter.ordinal,
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .testTag("stats_tab_row"),
+                    .testTag("stats_filter_tab_row"),
                 containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = JapaneseCrimson,
-                edgePadding = 8.dp,
                 divider = {}
             ) {
-                StatsTab.values().forEach { tab ->
-                    val isSelected = selectedTab == tab
+                StatsFilter.entries.forEach { filter ->
+                    val isSelected = selectedFilter == filter
                     Tab(
                         selected = isSelected,
-                        onClick = { selectedTab = tab },
+                        onClick = { selectedFilter = filter },
                         text = {
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -349,20 +287,20 @@ fun StatisticsScreen(
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
                                     Icon(
-                                        imageVector = tab.icon,
+                                        imageVector = filter.icon,
                                         contentDescription = null,
                                         modifier = Modifier.size(16.dp),
                                         tint = if (isSelected) JapaneseCrimson else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Text(
-                                        text = tab.title,
+                                        text = filter.title,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                         color = if (isSelected) JapaneseCrimson else MaterialTheme.colorScheme.onSurfaceVariant,
-                                        fontSize = 13.sp
+                                        fontSize = 12.sp
                                     )
                                 }
                                 Text(
-                                    text = tab.myanmarSubtitle,
+                                    text = filter.myanmarSubtitle,
                                     fontSize = 10.sp,
                                     color = if (isSelected) JapaneseCrimson.copy(alpha = 0.85f) else MaterialTheme.colorScheme.outline
                                 )
@@ -374,441 +312,23 @@ fun StatisticsScreen(
             }
         }
 
-        // 3. Tab-Dependent Content
-        when (selectedTab) {
-            StatsTab.OVERVIEW -> {
-                // Donut Mastery Breakdown
-                item {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("mastery_donut_card"),
-                        shape = RoundedCornerShape(22.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(18.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column {
-                                    Text(
-                                        text = "JLPT N3 Mastery Breakdown",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        text = "ဝေါဟာရ အဆင့်အလိုက် ခွဲခြားလေ့လာမှု",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = MasteredGreen.copy(alpha = 0.15f)
-                                ) {
-                                    Text(
-                                        text = "${masteryBreakdown.masteredCount}/${masteryBreakdown.totalCards} Words",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MasteredGreen,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                    )
-                                }
-                            }
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                // Canvas Donut Chart
-                                Box(
-                                    modifier = Modifier
-                                        .size(140.dp)
-                                        .testTag("donut_chart_canvas"),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    MasteryDonutChart(
-                                        breakdown = masteryBreakdown,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.Center
-                                    ) {
-                                        Text(
-                                            text = "${masteryBreakdown.masteryPercent.toInt()}%",
-                                            style = MaterialTheme.typography.titleLarge,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                        Text(
-                                            text = "Mastered",
-                                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-
-                                // Donut Legend & Stats
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    MasteryLegendItem(
-                                        label = "Mastered (ကျွမ်းကျင်)",
-                                        count = masteryBreakdown.masteredCount,
-                                        total = masteryBreakdown.totalCards,
-                                        color = MasteredGreen
-                                    )
-                                    MasteryLegendItem(
-                                        label = "Reviewing (ပြန်လည်လေ့ကျင့်)",
-                                        count = masteryBreakdown.reviewingCount,
-                                        total = masteryBreakdown.totalCards,
-                                        color = JapaneseIndigo
-                                    )
-                                    MasteryLegendItem(
-                                        label = "Learning (စတင်လေ့လာ)",
-                                        count = masteryBreakdown.learningCount,
-                                        total = masteryBreakdown.totalCards,
-                                        color = ReviewBlue
-                                    )
-                                    MasteryLegendItem(
-                                        label = "New / Unseen (မလေ့လာရသေး)",
-                                        count = masteryBreakdown.newCount,
-                                        total = masteryBreakdown.totalCards,
-                                        color = PolishOutline
-                                    )
-                                }
-                            }
-
-                            if (dueCount > 0) {
-                                Button(
-                                    onClick = { onNavigateToBrowse(VocabFilterType.DUE_REVIEWS) },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(46.dp)
-                                        .testTag("stats_review_due_btn"),
-                                    shape = RoundedCornerShape(14.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = JapaneseCrimson)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.AutoAwesome,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Review Due Cards ($dueCount Due Now)", fontWeight = FontWeight.Bold)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Daily Learning Activity Bar Chart
-                item {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("daily_progress_chart_card"),
-                        shape = RoundedCornerShape(22.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(18.dp),
-                            verticalArrangement = Arrangement.spacedBy(14.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column {
-                                    Text(
-                                        text = "Daily Study Activity",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        text = "နေ့စဉ် လေ့လာပြီးသော ကတ်အရေအတွက်နှင့် XP",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-
-                                // Time Range Selector
-                                Surface(
-                                    shape = RoundedCornerShape(50),
-                                    color = MaterialTheme.colorScheme.surfaceVariant,
-                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                                ) {
-                                    Row(modifier = Modifier.padding(2.dp)) {
-                                        StatsTimeRange.entries.forEach { range ->
-                                            val isSelected = selectedTimeRange == range
-                                            Box(
-                                                modifier = Modifier
-                                                    .clip(RoundedCornerShape(50))
-                                                    .background(
-                                                        if (isSelected) JapaneseCrimson else Color.Transparent
-                                                    )
-                                                    .clickable { vocabViewModel.setStatsTimeRange(range) }
-                                                    .padding(horizontal = 9.dp, vertical = 4.dp)
-                                            ) {
-                                                Text(
-                                                    text = range.label,
-                                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                                    color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            // Selected Day Detail Box
-                            val activeIndex = selectedDayIndex ?: (dailyStats.size - 1).coerceAtLeast(0)
-                            if (dailyStats.isNotEmpty() && activeIndex in dailyStats.indices) {
-                                val activePoint = dailyStats[activeIndex]
-                                Surface(
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 14.dp, vertical = 8.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = "${activePoint.dateLabel} (${activePoint.dayName})",
-                                            style = MaterialTheme.typography.labelMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                            Text(
-                                                text = "📚 ${activePoint.cardsCount} Cards",
-                                                style = MaterialTheme.typography.labelMedium,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = JapaneseIndigo
-                                            )
-                                            Text(
-                                                text = "⭐ +${activePoint.xpCount} XP",
-                                                style = MaterialTheme.typography.labelMedium,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = PolishTertiary
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
-                            // Compose Canvas Bar Chart
-                            DailyStudyBarChart(
-                                dailyPoints = dailyStats,
-                                selectedIndex = selectedDayIndex,
-                                onSelectIndex = { selectedDayIndex = it },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(180.dp)
-                            )
-
-                            // Chart Legend & Daily Goal Note
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(10.dp)
-                                                .clip(CircleShape)
-                                                .background(JapaneseCrimson)
-                                        )
-                                        Text(
-                                            text = "Cards Studied",
-                                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .width(12.dp)
-                                                .height(2.dp)
-                                                .background(StreakOrange)
-                                        )
-                                        Text(
-                                            text = "Daily Goal (${profile?.dailyGoal ?: 15})",
-                                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-
-                                Text(
-                                    text = "Tap bar for details",
-                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                    color = MaterialTheme.colorScheme.outline
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            StatsTab.QUIZ -> {
-                // Quiz Performance & Trend Chart
-                item {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("quiz_accuracy_trend_card"),
-                        shape = RoundedCornerShape(22.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(18.dp),
-                            verticalArrangement = Arrangement.spacedBy(14.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column {
-                                    Text(
-                                        text = "Quiz Accuracy Trend",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        text = "စစ်ဆေးမှုများတစ်လျှောက် တိကျမှုနှုန်း ပြောင်းလဲပုံ",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-
-                                Surface(
-                                    shape = RoundedCornerShape(50),
-                                    color = JapaneseIndigo.copy(alpha = 0.12f)
-                                ) {
-                                    Text(
-                                        text = "Avg: ${quizTrend.map { it.scorePercent }.average().let { if (it.isNaN()) 85 else it.toInt() }}%",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = JapaneseIndigo,
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                                    )
-                                }
-                            }
-
-                            // Line/Curve Accuracy Chart
-                            QuizAccuracyCurveChart(
-                                quizPoints = quizTrend,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(150.dp)
-                            )
-
-                            HorizontalDivider(
-                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f),
-                                thickness = 1.dp
-                            )
-
-                            // Direct Action Button to View Last 10 Sessions
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Last 10 sessions recorded",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-
-                                Button(
-                                    onClick = onNavigateToQuizHistory,
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = JapaneseCrimson),
-                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
-                                    modifier = Modifier.testTag("stats_view_quiz_history_btn")
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.History,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "View Quiz History",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            StatsTab.DEEP_DIVE -> {
-                // Interactive Visual Summary Dashboard (Daily Study Streaks & Kanji Category Mastery)
-                item {
-                    VisualSummaryDashboardCard(
-                        streakSummary = streakSummary,
-                        categoryStats = categoryStats,
-                        allCards = allCards,
-                        onStudyCategory = { categoryCards ->
-                            onNavigateToStudy(categoryCards)
-                        }
-                    )
-                }
-            }
-
-            StatsTab.LESSONS -> {
-                // Lesson-by-Lesson JLPT N3 Mastery Matrix Header
-                item {
+        // 3. Section: JLPT N3 Mastery Donut Breakdown (Shown for ALL or MASTERY)
+        if (selectedFilter == StatsFilter.ALL || selectedFilter == StatsFilter.MASTERY) {
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("mastery_donut_card"),
+                    shape = RoundedCornerShape(22.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                ) {
                     Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -817,143 +337,373 @@ fun StatisticsScreen(
                         ) {
                             Column {
                                 Text(
-                                    text = "Lesson Mastery Progress",
+                                    text = "JLPT N3 Mastery Breakdown",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = "သင်ခန်းစာ တစ်ခုချင်းစီ၏ တိုးတက်မှု အခြေအနေ",
+                                    text = "ဝေါဟာရ အဆင့်အလိုက် ခွဲခြားလေ့လာမှု",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
 
-                            Text(
-                                text = "Showing ${filteredLessons.size} of ${lessonStats.size}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = JapaneseCrimson,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MasteredGreen.copy(alpha = 0.15f)
+                            ) {
+                                Text(
+                                    text = "${masteryBreakdown.masteredCount}/${masteryBreakdown.totalCards} Words",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MasteredGreen,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
                         }
 
-                        // Search Input
-                        OutlinedTextField(
-                            value = selectedLessonFilter,
-                            onValueChange = { selectedLessonFilter = it },
-                            placeholder = { Text("Filter lessons (e.g. Lesson 1, Society, Nature)...", fontSize = 12.sp) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("lesson_stats_filter_input"),
-                            shape = RoundedCornerShape(14.dp),
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Search,
-                                    contentDescription = "Search",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            },
-                            trailingIcon = {
-                                if (selectedLessonFilter.isNotEmpty()) {
-                                    IconButton(onClick = { selectedLessonFilter = "" }) {
-                                        Icon(Icons.Default.Clear, contentDescription = "Clear", modifier = Modifier.size(16.dp))
-                                    }
-                                }
-                            },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = JapaneseCrimson,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
-                            ),
-                            singleLine = true
-                        )
-
-                        // Mastery Filter Chips
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            contentPadding = PaddingValues(vertical = 2.dp)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            item {
-                                FilterChip(
-                                    selected = lessonMasteryFilter == "ALL",
-                                    onClick = { lessonMasteryFilter = "ALL" },
-                                    label = { Text("All Lessons", fontWeight = FontWeight.Medium) },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = JapaneseIndigo,
-                                        selectedLabelColor = Color.White
-                                    )
+                            // Canvas Donut Chart
+                            Box(
+                                modifier = Modifier
+                                    .size(136.dp)
+                                    .testTag("donut_chart_canvas"),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                MasteryDonutChart(
+                                    breakdown = masteryBreakdown,
+                                    modifier = Modifier.fillMaxSize()
                                 )
-                            }
-                            item {
-                                FilterChip(
-                                    selected = lessonMasteryFilter == "MASTERED",
-                                    onClick = { lessonMasteryFilter = "MASTERED" },
-                                    label = { Text("Mastered (≥80%)", fontWeight = FontWeight.Medium) },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = MasteredGreen,
-                                        selectedLabelColor = Color.White
+
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        text = "${masteryBreakdown.masteryPercent.toInt()}%",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
+                                    Text(
+                                        text = "Mastered",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            // Donut Legend & Stats
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                MasteryLegendItem(
+                                    label = "Mastered (ကျွမ်းကျင်)",
+                                    count = masteryBreakdown.masteredCount,
+                                    total = masteryBreakdown.totalCards,
+                                    color = MasteredGreen
                                 )
-                            }
-                            item {
-                                FilterChip(
-                                    selected = lessonMasteryFilter == "IN_PROGRESS",
-                                    onClick = { lessonMasteryFilter = "IN_PROGRESS" },
-                                    label = { Text("In Progress (20-79%)", fontWeight = FontWeight.Medium) },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = JapaneseCrimson,
-                                        selectedLabelColor = Color.White
-                                    )
+                                MasteryLegendItem(
+                                    label = "Reviewing (ပြန်လည်လေ့ကျင့်)",
+                                    count = masteryBreakdown.reviewingCount,
+                                    total = masteryBreakdown.totalCards,
+                                    color = JapaneseIndigo
                                 )
-                            }
-                            item {
-                                FilterChip(
-                                    selected = lessonMasteryFilter == "NEEDS_REVIEW",
-                                    onClick = { lessonMasteryFilter = "NEEDS_REVIEW" },
-                                    label = { Text("Needs Review / Due", fontWeight = FontWeight.Medium) },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = WeakOrange,
-                                        selectedLabelColor = Color.White
-                                    )
+                                MasteryLegendItem(
+                                    label = "Learning (စတင်လေ့လာ)",
+                                    count = masteryBreakdown.learningCount,
+                                    total = masteryBreakdown.totalCards,
+                                    color = ReviewBlue
+                                )
+                                MasteryLegendItem(
+                                    label = "New / Unseen (မလေ့လာရသေး)",
+                                    count = masteryBreakdown.newCount,
+                                    total = masteryBreakdown.totalCards,
+                                    color = PolishOutline
                                 )
                             }
                         }
                     }
                 }
-
-                // Filtered Lesson Items
-                items(filteredLessons, key = { it.lessonNumber }) { lesson ->
-                    LessonMasteryCard(
-                        lesson = lesson,
-                        onStudyLesson = {
-                            val lessonCards = allCards.filter { it.lessonNumber == lesson.lessonNumber }
-                            if (lessonCards.isNotEmpty()) {
-                                onNavigateToStudy(lessonCards)
-                            }
-                        }
-                    )
-                }
             }
 
-            StatsTab.BADGES -> {
-                // Digital Trophies & Milestones Showcase
-                item {
-                    TrophyShowcaseCard(
-                        badges = badges,
-                        onBadgeClick = { badge ->
-                            selectedBadgeForDetail = badge
+            // 4. Section: Daily Learning Activity Bar Chart (Shown for ALL or MASTERY)
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("daily_progress_chart_card"),
+                    shape = RoundedCornerShape(22.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Daily Study Activity",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "နေ့စဉ် လေ့လာပြီးသော ကတ်အရေအတွက်နှင့် XP",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            // Time Range Selector
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                            ) {
+                                Row(modifier = Modifier.padding(2.dp)) {
+                                    StatsTimeRange.entries.forEach { range ->
+                                        val isSelected = selectedTimeRange == range
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(50))
+                                                .background(
+                                                    if (isSelected) JapaneseCrimson else Color.Transparent
+                                                )
+                                                .clickable { vocabViewModel.setStatsTimeRange(range) }
+                                                .padding(horizontal = 9.dp, vertical = 4.dp)
+                                        ) {
+                                            Text(
+                                                text = range.label,
+                                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
-                    )
+
+                        // Selected Day Detail Box
+                        val activeIndex = selectedDayIndex ?: (dailyStats.size - 1).coerceAtLeast(0)
+                        if (dailyStats.isNotEmpty() && activeIndex in dailyStats.indices) {
+                            val activePoint = dailyStats[activeIndex]
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "${activePoint.dateLabel} (${activePoint.dayName})",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                        Text(
+                                            text = "📚 ${activePoint.cardsCount} Cards",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = JapaneseIndigo
+                                        )
+                                        Text(
+                                            text = "⭐ +${activePoint.xpCount} XP",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = PolishTertiary
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Compose Canvas Bar Chart
+                        DailyStudyBarChart(
+                            dailyPoints = dailyStats,
+                            selectedIndex = selectedDayIndex,
+                            onSelectIndex = { selectedDayIndex = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(180.dp)
+                        )
+
+                        // Chart Legend & Daily Goal Note
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(10.dp)
+                                            .clip(CircleShape)
+                                            .background(JapaneseCrimson)
+                                    )
+                                    Text(
+                                        text = "Cards Studied",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .width(12.dp)
+                                            .height(2.dp)
+                                            .background(StreakOrange)
+                                    )
+                                    Text(
+                                        text = "Daily Goal (${profile?.dailyGoal ?: 15})",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            Text(
+                                text = "Tap bar for details",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                    }
                 }
             }
         }
-    }
 
-    selectedBadgeForDetail?.let { badge ->
-        BadgeDetailDialog(
-            badge = badge,
-            onDismiss = { selectedBadgeForDetail = null }
-        )
+        // 5. Section: Quiz Accuracy Trend & History (Shown for ALL or QUIZ)
+        if (selectedFilter == StatsFilter.ALL || selectedFilter == StatsFilter.QUIZ) {
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("quiz_accuracy_trend_card"),
+                    shape = RoundedCornerShape(22.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Quiz Accuracy Trend",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "စစ်ဆေးမှုများတစ်လျှောက် တိကျမှုနှုန်း ပြောင်းလဲပုံ",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = JapaneseIndigo.copy(alpha = 0.12f)
+                            ) {
+                                Text(
+                                    text = "Avg: ${quizTrend.map { it.scorePercent }.average().let { if (it.isNaN()) 85 else it.toInt() }}%",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = JapaneseIndigo,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+
+                        // Line/Curve Accuracy Chart
+                        QuizAccuracyCurveChart(
+                            quizPoints = quizTrend,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(150.dp)
+                        )
+
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f),
+                            thickness = 1.dp
+                        )
+
+                        // Direct Action Button to View Last 10 Sessions
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Last 10 sessions recorded",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            Button(
+                                onClick = onNavigateToQuizHistory,
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = JapaneseCrimson),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                                modifier = Modifier.testTag("stats_view_quiz_history_btn")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.History,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "View Quiz History",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1427,121 +1177,3 @@ fun MasteryLegendItem(
     }
 }
 
-// -------------------------------------------------------------
-// COMPONENT: Lesson Mastery Progress Card
-// -------------------------------------------------------------
-
-@Composable
-fun LessonMasteryCard(
-    lesson: LessonMasteryDetail,
-    onStudyLesson: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .testTag("lesson_mastery_card_${lesson.lessonNumber}"),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(JapaneseIndigo.copy(alpha = 0.12f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (lesson.lessonNumber == 999) "★" else "L${lesson.lessonNumber}",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = JapaneseIndigo
-                        )
-                    }
-
-                    Column {
-                        Text(
-                            text = lesson.lessonTitle,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = "${lesson.totalCount} Cards • ${lesson.masteredCount} Mastered • ${lesson.dueCount} Due",
-                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                // Study Lesson Button
-                IconButton(
-                    onClick = onStudyLesson,
-                    modifier = Modifier
-                        .size(36.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = "Study Lesson",
-                        tint = JapaneseCrimson,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
-
-            // Progress Bar
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(8.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(PolishOutlineVariant)
-                ) {
-                    val frac = (lesson.masteryPercent / 100f).coerceIn(0f, 1f)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(fraction = frac.coerceAtLeast(0.02f))
-                            .height(8.dp)
-                            .clip(RoundedCornerShape(50))
-                            .background(
-                                if (lesson.masteryPercent >= 80) MasteredGreen else JapaneseCrimson
-                            )
-                    )
-                }
-
-                Text(
-                    text = "${lesson.masteryPercent.toInt()}%",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = if (lesson.masteryPercent >= 80) MasteredGreen else JapaneseCrimson
-                )
-            }
-        }
-    }
-}
