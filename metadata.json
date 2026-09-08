@@ -1,6 +1,0 @@
-{
-  "name": "KanjiKotoba",
-  "description": "JLPT N3 Kanji & Kotoba Spaced Repetition Flashcards and Quiz app with offline Burmese vocabulary data, custom cards, and gamified progress tracking.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
