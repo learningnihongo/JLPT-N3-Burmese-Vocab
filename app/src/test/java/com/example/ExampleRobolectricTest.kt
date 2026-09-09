@@ -301,5 +301,13 @@ class ExampleRobolectricTest {
       assertTrue(card.meaningBurmese.isNotBlank())
     }
   }
+
+  @Test
+  fun `kanji progress screen route and goal types are properly initialized`() {
+    assertEquals("kanji_progress", com.example.ui.navigation.Screen.KanjiProgress.route)
+    assertEquals(650, com.example.ui.screens.KanjiGoalType.STANDARD_N3_KANJI.defaultGoal)
+    assertEquals(880, com.example.ui.screens.KanjiGoalType.TOTAL_APP_VOCAB.defaultGoal)
+    assertTrue(com.example.ui.screens.KanjiGoalType.STANDARD_N3_KANJI.description.contains("၆၅၀"))
+  }
 }
 

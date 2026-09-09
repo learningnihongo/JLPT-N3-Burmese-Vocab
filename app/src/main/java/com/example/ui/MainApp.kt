@@ -63,6 +63,7 @@ import com.example.ui.navigation.Screen
 import com.example.ui.screens.FlashcardScreen
 import com.example.ui.screens.FlashcardStudyScreen
 import com.example.ui.screens.HomeScreen
+import com.example.ui.screens.KanjiProgressScreen
 import com.example.ui.screens.ProfileScreen
 import com.example.ui.screens.QuizHistoryScreen
 import com.example.ui.screens.QuizScreen
@@ -286,6 +287,9 @@ fun MainApp(
                             },
                             onNavigateToFlashcard = {
                                 navController.navigate(Screen.Flashcard.route)
+                            },
+                            onNavigateToKanjiProgress = {
+                                navController.navigate(Screen.KanjiProgress.route)
                             }
                         )
                     }
@@ -314,6 +318,9 @@ fun MainApp(
                             },
                             onNavigateToQuizHistory = {
                                 navController.navigate(Screen.QuizHistory.route)
+                            },
+                            onNavigateToKanjiProgress = {
+                                navController.navigate(Screen.KanjiProgress.route)
                             }
                         )
                     }
@@ -360,6 +367,19 @@ fun MainApp(
                             vocabViewModel = vocabViewModel,
                             onNavigateBack = {
                                 navController.popBackStack()
+                            }
+                        )
+                    }
+
+                    composable(Screen.KanjiProgress.route) {
+                        KanjiProgressScreen(
+                            vocabViewModel = vocabViewModel,
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            },
+                            onNavigateToStudy = { cards ->
+                                vocabViewModel.startStudySession(cards)
+                                navController.navigate(Screen.Study.route)
                             }
                         )
                     }

@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Flip
 import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Quiz
@@ -56,6 +57,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -87,6 +89,7 @@ import com.example.ui.viewmodel.KanjiCategoryMastery
 import com.example.ui.components.BadgeDetailDialog
 import com.example.ui.components.DailyGoalProgressRing
 import com.example.ui.components.SetDailyGoalDialog
+import com.example.ui.theme.JapaneseCrimson
 import com.example.ui.theme.MasteredGreen
 import com.example.ui.theme.ReviewBlue
 import com.example.ui.theme.SakuraPinkDark
@@ -151,6 +154,7 @@ fun HomeScreen(
     onOpenAddCustomCard: () -> Unit,
     onNavigateToStats: () -> Unit = {},
     onNavigateToFlashcard: () -> Unit = {},
+    onNavigateToKanjiProgress: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val profile by vocabViewModel.userProfile.collectAsState()
@@ -793,7 +797,78 @@ fun HomeScreen(
             }
         }
 
-        // 4c. KANJI & VOCAB CATEGORIES (Organized groups: Shinkanzen, Hnin, Thematic)
+        // 4c. JLPT N3 KANJI GOAL PROGRESS (Learned vs Remaining chart shortcut)
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("home_kanji_progress_banner"),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = JapaneseCrimson.copy(alpha = 0.12f),
+                            modifier = Modifier.size(42.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.PieChart,
+                                    contentDescription = null,
+                                    tint = JapaneseCrimson,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                        }
+
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                text = "JLPT N3 Kanji Goal Chart",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Learned vs. Remaining (၆၅၀ လုံး ပန်းတိုင်)",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    OutlinedButton(
+                        onClick = onNavigateToKanjiProgress,
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, JapaneseCrimson),
+                        modifier = Modifier.testTag("home_open_kanji_chart_btn")
+                    ) {
+                        Text(
+                            text = "ဇယားကြည့်ရန်",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = JapaneseCrimson
+                        )
+                    }
+                }
+            }
+        }
+
+        // 4d. KANJI & VOCAB CATEGORIES (Organized groups: Shinkanzen, Hnin, Thematic)
         if (categoryStats.isNotEmpty()) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

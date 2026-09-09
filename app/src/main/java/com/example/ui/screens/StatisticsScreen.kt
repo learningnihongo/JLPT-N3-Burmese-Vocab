@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Quiz
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.WorkspacePremium
@@ -116,7 +117,8 @@ fun StatisticsScreen(
     quizViewModel: QuizViewModel? = null,
     onNavigateToStudy: (List<VocabCard>) -> Unit = {},
     onNavigateToBrowse: (VocabFilterType) -> Unit = {},
-    onNavigateToQuizHistory: () -> Unit = {}
+    onNavigateToQuizHistory: () -> Unit = {},
+    onNavigateToKanjiProgress: () -> Unit = {}
 ) {
     val profile by vocabViewModel.userProfile.collectAsState()
     val masteryBreakdown by vocabViewModel.masteryBreakdown.collectAsState()
@@ -306,6 +308,72 @@ fun StatisticsScreen(
                                 onClick = { onNavigateToBrowse(VocabFilterType.DUE_REVIEWS) }
                             )
                         }
+                    }
+                }
+            }
+        }
+
+        // 1b. JLPT N3 Kanji Goal Progress Chart Banner (Material Design Charts)
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("kanji_goal_chart_shortcut_banner"),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = JapaneseCrimson,
+                            modifier = Modifier.size(42.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.PieChart,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                        }
+
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                text = "Kanji Goal Progress Chart",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Learned vs. Remaining visualization & pacing",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Button(
+                        onClick = onNavigateToKanjiProgress,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = JapaneseCrimson),
+                        modifier = Modifier.testTag("open_kanji_goal_chart_btn")
+                    ) {
+                        Text("ဇယားကြည့်ရန်", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
                 }
             }

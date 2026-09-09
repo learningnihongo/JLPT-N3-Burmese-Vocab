@@ -27,6 +27,7 @@ sealed class Screen(
     data object Profile : Screen("profile", "Profile", Icons.Filled.Person, Icons.Outlined.Person)
     data object Study : Screen("study", "Study", Icons.Filled.AutoAwesome, Icons.Filled.AutoAwesome)
     data object Flashcard : Screen("flashcard", "Flashcard", Icons.Filled.AutoAwesome, Icons.Filled.AutoAwesome)
+    data object KanjiProgress : Screen("kanji_progress", "Kanji Progress", Icons.Filled.BarChart, Icons.Outlined.BarChart)
     data object QuizHistory : Screen("quiz_history", "Quiz History", Icons.Filled.Quiz, Icons.Outlined.Quiz)
 }
 
